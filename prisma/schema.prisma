@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("designer") // designer, admin, studio_director
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedRequests DesignRequest[] @relation("AssignedDesigner")
+  createdRequests  DesignRequest[] @relation("RequestCreator")
+  comments         Comment[]
+}
+
+model DesignRequest {
+  id          Int       @id @default(autoincrement())
+  title       String
+  category    String
+  client      String
+  product     String?
+  deadline    DateTime?
+  priority    String    @default("Medium") // Low, Medium, High, Urgent
+  status      String    @default("In Progress") // In Progress, Review, Revision, Completed, On Hold
+  description String?
+  progress    Int       @default(0)
+  budget      Float?
+  projectType String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  assignedDesignerId Int?
+  assignedDesigner   User? @relation("AssignedDesigner", fields: [assignedDesignerId], references: [id])
+
+  createdById Int?
+  createdBy   User? @relation("RequestCreator", fields: [createdById], references: [id])
+
+  comments Comment[]
+  files    File[]
+  tags     RequestTag[]
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+
+  requestId Int
+  request   DesignRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  authorId Int?
+  author   User? @relation(fields: [authorId], references: [id])
+  authorName String // fallback jika author dihapus
+}
+
+model File {
+  id        Int      @id @default(autoincrement())
+  name      String
+  url       String
+  mimeType  String?
+  size      Int?
+  createdAt DateTime @default(now())
+
+  requestId Int
+  request   DesignRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model Tag {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  requests RequestTag[]
+}
+
+model RequestTag {
+  requestId Int
+  tagId     Int
+
+  request DesignRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  tag     Tag           @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([requestId, tagId])
+}
