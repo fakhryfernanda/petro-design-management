@@ -1,125 +1,409 @@
 'use client'
 
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import AppLayout from '../../components/layout/AppLayout'
 
-const CARDS = [
-  { id:'#PX-901', title:'Nexus Platform UI',  client:'Stellar Tech',  date:'Oct 12, 2023', tag:'UI/UX',        tagColor:'border-primary/30 text-primary bg-primary/5',       img:'https://lh3.googleusercontent.com/aida-public/AB6AXuBRYiPhEoOn1gFIhvf4OzF-0jGXsqQkuBk5u0aWhEDjFtcNhRqf5ExpaM23i9sBjLSm9F6clDffk6L7GTVq0wHvU6iN3gFivDcPcW326rowB94KgpYP5_DV2lk0u9duSNyHz-G_6ssUvfJrfijGwLJU9EeQlV_xpr0jXgM18AjuzSaDtvq40alj3z5TDtibgdvMivmcnwSAFCT-k0gYRhdXa7NWFfCm4Pk36EBjA1q44UGouL6M2XJEWQ' },
-  { id:'#PX-884', title:'Neon Rebranding',    client:'Neon Dynamics', date:'Sep 28, 2023', tag:'Branding',     tagColor:'border-secondary/30 text-secondary bg-secondary/5',   img:'https://lh3.googleusercontent.com/aida-public/AB6AXuCxNdQBkQaDpUR6GGy-zyTvHxjjrFHo3J8TDfN-Ep0R39mQCcnayCEH1JKteCZ3QuuUsz4yjlkpWQJychcqR-pzD5jK4WNDJcsAuM6185zqeCv3ofKnmj3YEjUJuocCQ2qdncd8Q84RcBmCmXeTILDqFfkkNpSpwdzTpatKaHyaCBaC7BAUMNfJWEZRosgD9ngfZdzbt2lk1hWTTDiJRwNEDwy6RaMzGiT4a3zDWq_gtKZlENh2F6nJ_w' },
-  { id:'#PX-872', title:'Q3 Ad Campaign',     client:'Aura Ventures', date:'Aug 15, 2023', tag:'Social',       tagColor:'border-tertiary/30 text-tertiary bg-tertiary/5',       img:'https://lh3.googleusercontent.com/aida-public/AB6AXuAH9FRhVraurYlA8ZdccpQAukJxHoXu0PQ5V69qnnnW8Dn4uf8fYNvdOzXWFPeSoZDiLX061EaDctTQMZg-ADwKKzsmE__ZG1dL2_gFlwRQv7ZVczB_JLpQ8194hVH3a_G9MivbieVSYc3fX0AwdrJAZmDHlDaI0eOq2owimtvzpJkS7oszCLMXi9Zfb5wHor3kfbThNMn8s8D44QQD3Tzl647HaOoFeWIh45oWilRQGwOrFPxGH7sgfA' },
-  { id:'#PX-851', title:'Nova Pack Design',   client:'Orion Audio',   date:'Jul 30, 2023', tag:'Product',      tagColor:'border-primary/30 text-primary bg-primary/5',           img:'https://lh3.googleusercontent.com/aida-public/AB6AXuDE-NJvMu2PsJiybVyNPj1_kv7zPCWVINAchCM4plLXLkksCPSxXHhc-4Kg1mndsKrOJOYdZN_Mu1lUFWVUDWIFmeZMIsBcyobaNnJrFyoX6iBr_nRiX3bz-FC6WhV0sjAiFf9_zCHHLo6-d0zvsDaUwfD1BhyUXhT-mHIeUMeispidamSXQbEmxBhSJHqu488ea5RFfjx9Pw75tGXkGQ9WJVNv3RGIpuYI5mnHd23SKE_dQTIUx3E0Uw' },
-  { id:'#PX-842', title:'Aether Characters',  client:'GameSpire',     date:'Jun 12, 2023', tag:'3D Assets',    tagColor:'border-secondary/30 text-secondary bg-secondary/5',    img:'https://lh3.googleusercontent.com/aida-public/AB6AXuDxtzoOhzY-w8EtJz0qkTVAQj57emuTx0cfP10sR4HWJKnPSbFApcZxMFiy7HAgJk24HbfuzPoW3DL8D4a1eaLlOpDAIyTy45fr5te9BfTxAhFncE081F3JZpMrUw6yeR9BNCfotCSBgu861IgyvNuZFqaMWnaj7dCINKVd2zkMHMPPX6Fsy86__EZvnqKpHGRNW9NKmQpVdEyKnAfS85qCi1tlMlLIiakvxOxEEabmI66vc5-FYoKrAA' },
-  { id:'#PX-820', title:'2023 Annual Report', client:'EcoTrust',      date:'May 05, 2023', tag:'Editorial',    tagColor:'border-tertiary/30 text-tertiary bg-tertiary/5',        img:'https://lh3.googleusercontent.com/aida-public/AB6AXuDF1pwYex80d1XKcpL_uNLFbLJwptdjnJtf2MnPanlikAhEv7LaaNzt0V97C8Jb4SkKWdeHOPXeUOBHu_OY-9TChKJP-01jh-dP6Iob1o8xDHXq0xQgAhx6yZWEIlK8Gv1-UIum_FDsh6n_mDvsaHT3E46cxmnEGdm2j-AEWSZI9BV_Gk-2G4oLnyGvlqEgQgnSSSdBm_HK7bmpBuOuazJYWgl1mOBt9lLbLgwwi1AsJDugUkVY1sNmOQ' },
-  { id:'#PX-799', title:'Horizon Travel Web', client:'Horizon Lux',   date:'Apr 21, 2023', tag:'Web Design',   tagColor:'border-primary/30 text-primary bg-primary/5',           img:'https://lh3.googleusercontent.com/aida-public/AB6AXuBj4IOfelr88rTaBzAO7-UUnDm40N1mffKxLqv2et8LfbZ-SfIbN17J_qP-B7tOLR66yXAT2TWyk8FuO5sSe0b39qhL0x55yAXZ1sJfbUJsqhhLPdrBqy15DCKTIJfIBE-xDAUz7bOvQRZgt5N-cu0jiWDEi4R-BIzNOPK28swD5-RK3DZQSqddScBh26M-YyYuNLVTOxo0YABe4FhUHCaOS-2FKA11L8Ibt2IJjO-BJuKCPCA-isTp1Q' },
-  { id:'#PX-765', title:'Prism Icon Set',     client:'Internal',      date:'Mar 10, 2023', tag:'Asset Library',tagColor:'border-secondary/30 text-secondary bg-secondary/5',    img:'https://lh3.googleusercontent.com/aida-public/AB6AXuDd7K65AyDv34wKHFl53zrJQo4GjnhE85MyblYXazLdw0iugBeVPLWxo7CPYJKYAg8cJKldVfFWL_LfqFqHv_1S1CRPU7N75b8iAjI6M9MGrAEV6KtWqxlocy915VUk7OZoJoBCltAgLRnlqonk8xpSNoq_gtnUU_RiiNNpwkjzRJz1srj-9DF0XA48xgxjZzX_JvXOGw1Q4mIDKJCc0k8j4WaLI6sxetYoi_2TyTU3StM-Lifrp6fr0A' },
-]
+// ── Status badge colors ──────────────────────────────────────
+const STATUS_STYLE = {
+  'Completed':   'bg-gradient-to-r from-green-500 to-emerald-400 text-white shadow-emerald-500/30',
+  'In Progress': 'bg-primary/20 text-primary border border-primary/40',
+  'Review':      'bg-tertiary/20 text-tertiary border border-tertiary/40',
+  'Revision':    'bg-secondary/20 text-secondary border border-secondary/40',
+  'On Hold':     'bg-outline/20 text-outline border border-outline/40',
+}
 
-const FILTER_SELECTS = [
-  { label:'Category',        opts:['All Categories','UI/UX Design','Branding','Social Media','Motion Graphics'] },
-  { label:'Client/Company',  opts:['All Clients','Stellar Tech','Neon Dynamics','Aura Ventures'] },
-  { label:'Designer',        opts:['Any Designer','Alex Rivera','Jordan Smith','Casey Moore'] },
-  { label:'Status',          opts:['Completed','Archived','Canceled','All Statuses'] },
-]
+const getStatusStyle = (s) => STATUS_STYLE[s] ?? STATUS_STYLE['On Hold']
+const TAG_COLOR = {
+  'UI/UX':        'border-primary/30 text-primary bg-primary/5',
+  'Branding':     'border-secondary/30 text-secondary bg-secondary/5',
+  'Social Media': 'border-tertiary/30 text-tertiary bg-tertiary/5',
+  'Web Design':   'border-primary/30 text-primary bg-primary/5',
+  '3D Assets':    'border-secondary/30 text-secondary bg-secondary/5',
+  'Editorial':    'border-tertiary/30 text-tertiary bg-tertiary/5',
+  'Product':      'border-primary/30 text-primary bg-primary/5',
+  'Packaging':    'border-secondary/30 text-secondary bg-secondary/5',
+  'Asset Library':'border-secondary/30 text-secondary bg-secondary/5',
+  'Marketing':    'border-tertiary/30 text-tertiary bg-tertiary/5',
+  'Mobile':       'border-primary/30 text-primary bg-primary/5',
+}
+
+const getTagColor = (tag) => TAG_COLOR[tag] ?? 'border-outline/30 text-outline bg-outline/5'
+
+// ── Skeleton card ────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <div className="glass-panel rounded-2xl overflow-hidden flex flex-col animate-pulse">
+      <div className="aspect-video bg-white/5" />
+      <div className="p-sm space-y-sm">
+        <div className="h-3 bg-white/10 rounded w-3/4" />
+        <div className="h-2 bg-white/5 rounded w-1/2" />
+        <div className="h-px bg-white/5 mt-sm" />
+        <div className="flex justify-between">
+          <div className="h-2 bg-white/5 rounded w-1/3" />
+          <div className="h-4 bg-white/5 rounded-full w-16" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Archive card ──────────────────────────────────────────────
+function ArchiveCard({ request, onClick }) {
+  const primaryTag = request.tags?.[0]
+
+  return (
+    <div
+      className="glass-panel rounded-2xl overflow-hidden group flex flex-col cursor-pointer hover:border-white/20 transition-all"
+      onClick={onClick}
+    >
+      <div className="relative aspect-video overflow-hidden bg-surface-container-high">
+        <div className="absolute inset-0 flex items-center justify-center opacity-20">
+          <span className="material-symbols-outlined text-[48px] text-on-surface-variant">image</span>
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute top-sm right-sm">
+          <span className={`font-bold text-[10px] px-sm py-0.5 rounded-full shadow-lg ${getStatusStyle(request.status)}`}>
+            {request.status}
+          </span>
+        </div>
+        <div className="absolute bottom-sm left-sm">
+          <span className="text-[10px] text-on-surface-variant bg-surface-container/80 backdrop-blur-sm px-xs py-0.5 rounded">
+            #{String(request.id).padStart(3, '0')}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-sm flex-1 flex flex-col">
+        <div className="flex justify-between items-start mb-base gap-xs">
+          <h4 className="text-label-md text-on-surface font-bold truncate">{request.title}</h4>
+          <span className="text-[10px] text-on-surface-variant bg-surface-container-high px-xs py-px rounded flex-shrink-0">
+            {request.category}
+          </span>
+        </div>
+        <p className="text-label-sm text-on-surface-variant mb-sm">Client: {request.client}</p>
+        {request.assignedDesigner && (
+          <p className="text-[11px] text-on-surface-variant/60 mb-sm">
+            Designer: {request.assignedDesigner.name}
+          </p>
+        )}
+        <div className="mt-auto flex items-center justify-between pt-sm border-t border-white/5">
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase text-on-surface-variant font-bold opacity-60">Finished</span>
+            <span className="text-label-sm text-on-surface">
+              {new Date(request.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+          </div>
+          {primaryTag && (
+            <span className={`px-sm py-0.5 rounded-full border text-[10px] ${getTagColor(primaryTag)}`}>
+              {primaryTag}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────
+const CATEGORIES = ['UI/UX Design', 'Brand Identity', 'Marketing Assets', 'Product Design', 'Motion Graphics', 'Editorial']
+const STATUSES   = ['Completed', 'In Progress', 'Review', 'Revision', 'On Hold']
+const LIMIT = 8
 
 export default function ArchiveClient() {
   const router = useRouter()
 
+  // Filter state
+  const [search,     setSearch]     = useState('')
+  const [category,   setCategory]   = useState('')
+  const [client,     setClient]     = useState('')
+  const [designerId, setDesignerId] = useState('')
+  const [status,     setStatus]     = useState('')
+  const [month,      setMonth]      = useState('')
+  const [page,       setPage]       = useState(1)
+
+  // Data state
+  const [requests,   setRequests]   = useState([])
+  const [total,      setTotal]      = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [loading,    setLoading]    = useState(true)
+  const [designers,  setDesigners]  = useState([])
+
+  // Debounce ref untuk search
+  const debounceRef = useRef(null)
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // Fetch designers sekali
+  useEffect(() => {
+    fetch('/api/users')
+      .then((r) => r.json())
+      .then(setDesigners)
+      .catch(console.error)
+  }, [])
+
+  // Debounce search input
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [search])
+
+  // Reset page saat filter berubah
+  useEffect(() => { setPage(1) }, [category, client, designerId, status, month])
+
+  // Fetch data
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ limit: LIMIT, page })
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      if (category)        params.set('category', category)
+      if (client)          params.set('client', client)
+      if (designerId)      params.set('designerId', designerId)
+      if (status)          params.set('status', status)
+      if (month)           params.set('month', month)
+
+      const res  = await fetch(`/api/requests?${params}`)
+      const json = await res.json()
+
+      setRequests(json.data)
+      setTotal(json.total)
+      setTotalPages(json.totalPages)
+    } catch (e) {
+      console.error('Fetch error:', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [debouncedSearch, category, client, designerId, status, month, page])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  const resetFilters = () => {
+    setSearch('')
+    setCategory('')
+    setClient('')
+    setDesignerId('')
+    setStatus('')
+    setMonth('')
+    setPage(1)
+  }
+
+  const hasActiveFilters = search || category || client || designerId || status || month
+
+  // ── Render ──────────────────────────────────────────────────
   return (
     <AppLayout title="Design Archive">
       <div className="p-lg space-y-lg">
-        {/* Filters */}
+
+        {/* ── Filters ── */}
         <section className="glass-panel p-md rounded-2xl">
           <div className="flex items-center gap-xs mb-md">
             <span className="material-symbols-outlined text-primary">tune</span>
             <h3 className="text-label-md text-on-surface font-bold uppercase tracking-widest">Advanced Filters</h3>
+            {hasActiveFilters && (
+              <span className="ml-auto text-[10px] text-primary bg-primary/10 border border-primary/20 px-xs py-0.5 rounded-full">
+                Filters active
+              </span>
+            )}
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-md">
+            {/* Search */}
             <div className="space-y-xs">
-              <label className="text-label-sm text-on-surface-variant ml-1 block">Project ID / Title</label>
-              <input type="text" placeholder="e.g. #PX-402"
-                className="w-full bg-surface-container-low border border-white/10 rounded-lg px-sm py-xs text-label-md focus:ring-1 focus:ring-primary focus:border-primary outline-none" />
-            </div>
-            {FILTER_SELECTS.map(({ label, opts }) => (
-              <div key={label} className="space-y-xs">
-                <label className="text-label-sm text-on-surface-variant ml-1 block">{label}</label>
-                <select className="w-full bg-surface-container-low border border-white/10 rounded-lg px-sm py-xs text-label-md focus:ring-primary focus:border-primary outline-none appearance-none">
-                  {opts.map((o) => <option key={o}>{o}</option>)}
-                </select>
+              <label className="text-label-sm text-on-surface-variant ml-1 block">Search</label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-xs top-1/2 -translate-y-1/2 text-[16px] text-on-surface-variant">search</span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Title or client..."
+                  className="w-full bg-surface-container-low border border-white/10 rounded-lg pl-7 pr-sm py-xs text-label-md focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                />
               </div>
-            ))}
+            </div>
+
+            {/* Category */}
+            <div className="space-y-xs">
+              <label className="text-label-sm text-on-surface-variant ml-1 block">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full bg-surface-container-low border border-white/10 rounded-lg px-sm py-xs text-label-md focus:ring-1 focus:ring-primary outline-none appearance-none"
+              >
+                <option value="">All Categories</option>
+                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+
+            {/* Client */}
+            <div className="space-y-xs">
+              <label className="text-label-sm text-on-surface-variant ml-1 block">Client / Company</label>
+              <input
+                type="text"
+                value={client}
+                onChange={(e) => setClient(e.target.value)}
+                placeholder="Client name..."
+                className="w-full bg-surface-container-low border border-white/10 rounded-lg px-sm py-xs text-label-md focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+              />
+            </div>
+
+            {/* Designer */}
+            <div className="space-y-xs">
+              <label className="text-label-sm text-on-surface-variant ml-1 block">Designer</label>
+              <select
+                value={designerId}
+                onChange={(e) => setDesignerId(e.target.value)}
+                className="w-full bg-surface-container-low border border-white/10 rounded-lg px-sm py-xs text-label-md focus:ring-1 focus:ring-primary outline-none appearance-none"
+              >
+                <option value="">Any Designer</option>
+                {designers.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status */}
+            <div className="space-y-xs">
+              <label className="text-label-sm text-on-surface-variant ml-1 block">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full bg-surface-container-low border border-white/10 rounded-lg px-sm py-xs text-label-md focus:ring-1 focus:ring-primary outline-none appearance-none"
+              >
+                <option value="">All Statuses</option>
+                {STATUSES.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+
+            {/* Month */}
             <div className="space-y-xs">
               <label className="text-label-sm text-on-surface-variant ml-1 block">Date Period</label>
-              <input type="month" className="w-full bg-surface-container-low border border-white/10 rounded-lg px-sm py-xs text-label-md focus:ring-primary focus:border-primary outline-none" />
+              <input
+                type="month"
+                value={month}
+                onChange={(e) => setMonth(e.target.value)}
+                className="w-full bg-surface-container-low border border-white/10 rounded-lg px-sm py-xs text-label-md focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+              />
             </div>
           </div>
+
           <div className="mt-md pt-md border-t border-white/5 flex justify-between items-center">
-            <p className="text-label-sm text-on-surface-variant">Showing 8 of 1,284 results</p>
+            <p className="text-label-sm text-on-surface-variant">
+              {loading
+                ? 'Loading...'
+                : `Showing ${Math.min((page - 1) * LIMIT + 1, total)}–${Math.min(page * LIMIT, total)} of ${total.toLocaleString()} results`
+              }
+            </p>
             <div className="flex gap-sm">
-              <button className="text-label-md text-on-surface-variant hover:text-on-surface px-md py-xs">Reset All</button>
-              <button className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors text-label-md px-md py-xs rounded-lg">Apply Filters</button>
+              <button
+                onClick={resetFilters}
+                className="text-label-md text-on-surface-variant hover:text-on-surface px-md py-xs transition-colors"
+              >
+                Reset All
+              </button>
+              <button
+                onClick={fetchData}
+                className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors text-label-md px-md py-xs rounded-lg"
+              >
+                Apply Filters
+              </button>
             </div>
           </div>
         </section>
 
-        {/* Grid */}
+        {/* ── Grid ── */}
         <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter">
-          {CARDS.map((card) => (
-            <div key={card.id}
-              className="glass-panel rounded-2xl overflow-hidden group flex flex-col cursor-pointer hover:border-white/20 transition-all"
-              onClick={() => router.push('/requests/882')}>
-              <div className="relative aspect-video overflow-hidden">
-                <img src={card.img} alt={card.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-sm">
-                  {['download','visibility'].map((icon) => (
-                    <button key={icon} className="p-sm bg-white/10 backdrop-blur-md border border-white/20 rounded-full hover:bg-white/20 transition-all">
-                      <span className="material-symbols-outlined text-white">{icon}</span>
-                    </button>
-                  ))}
+          {loading
+            ? Array.from({ length: LIMIT }).map((_, i) => <SkeletonCard key={i} />)
+            : requests.length === 0
+              ? (
+                <div className="col-span-4 flex flex-col items-center justify-center py-xl text-center">
+                  <span className="material-symbols-outlined text-[48px] text-on-surface-variant/30 mb-md">search_off</span>
+                  <p className="text-body-md text-on-surface-variant">No results found</p>
+                  <p className="text-label-sm text-on-surface-variant/60 mt-xs">Try adjusting your filters</p>
                 </div>
-                <div className="absolute top-sm right-sm">
-                  <span className="bg-emerald-500 text-white font-bold text-[10px] px-sm py-0.5 rounded-full">Completed</span>
-                </div>
-              </div>
-              <div className="p-sm flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-base">
-                  <h4 className="text-label-md text-on-surface font-bold truncate">{card.title}</h4>
-                  <span className="text-[10px] text-on-surface-variant bg-surface-container-high px-xs py-px rounded ml-2 flex-shrink-0">{card.id}</span>
-                </div>
-                <p className="text-label-sm text-on-surface-variant mb-sm">Client: {card.client}</p>
-                <div className="mt-auto flex items-center justify-between pt-sm border-t border-white/5">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] uppercase text-on-surface-variant font-bold opacity-60">Finished</span>
-                    <span className="text-label-sm text-on-surface">{card.date}</span>
-                  </div>
-                  <span className={`px-sm py-0.5 rounded-full border text-[10px] ${card.tagColor}`}>{card.tag}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+              )
+              : requests.map((req) => (
+                <ArchiveCard
+                  key={req.id}
+                  request={req}
+                  onClick={() => router.push(`/requests/${req.id}`)}
+                />
+              ))
+          }
         </section>
 
-        {/* Pagination */}
-        <footer className="flex items-center justify-between pt-lg">
-          <button className="glass-button px-md py-sm rounded-xl flex items-center gap-xs text-label-md text-on-surface-variant opacity-50 cursor-not-allowed">
-            <span className="material-symbols-outlined">chevron_left</span> Previous
-          </button>
-          <div className="flex items-center gap-base">
-            <button className="w-10 h-10 rounded-lg primary-gradient text-white font-bold flex items-center justify-center">1</button>
-            {[2,3].map((n) => (
-              <button key={n} className="w-10 h-10 rounded-lg glass-button text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center">{n}</button>
-            ))}
-            <span className="text-on-surface-variant px-sm">...</span>
-            <button className="w-10 h-10 rounded-lg glass-button text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center">12</button>
-          </div>
-          <button className="glass-button px-md py-sm rounded-xl flex items-center gap-xs text-label-md text-on-surface-variant">
-            Next <span className="material-symbols-outlined">chevron_right</span>
-          </button>
-        </footer>
+        {/* ── Pagination ── */}
+        {!loading && totalPages > 1 && (
+          <footer className="flex items-center justify-between pt-lg">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="glass-button px-md py-sm rounded-xl flex items-center gap-xs text-label-md text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
+            >
+              <span className="material-symbols-outlined">chevron_left</span>
+              Previous
+            </button>
+
+            <div className="flex items-center gap-base">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                // Sliding window di sekitar halaman aktif
+                let p
+                if (totalPages <= 5) {
+                  p = i + 1
+                } else if (page <= 3) {
+                  p = i + 1
+                } else if (page >= totalPages - 2) {
+                  p = totalPages - 4 + i
+                } else {
+                  p = page - 2 + i
+                }
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-10 h-10 rounded-lg text-label-md flex items-center justify-center transition-colors ${
+                      p === page
+                        ? 'primary-gradient text-white font-bold shadow-lg'
+                        : 'glass-button text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              })}
+              {totalPages > 5 && page < totalPages - 2 && (
+                <>
+                  <span className="text-on-surface-variant px-xs">...</span>
+                  <button onClick={() => setPage(totalPages)}
+                    className="w-10 h-10 rounded-lg glass-button text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center">
+                    {totalPages}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="glass-button px-md py-sm rounded-xl flex items-center gap-xs text-label-md text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
+            >
+              Next
+              <span className="material-symbols-outlined">chevron_right</span>
+            </button>
+          </footer>
+        )}
+
       </div>
 
+      {/* Floating atmosphere */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
         <div className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-primary/10 blur-[150px] rounded-full animate-pulse" />
-        <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-secondary/10 blur-[150px] rounded-full animate-pulse" style={{animationDelay:'2s'}} />
+        <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-secondary/10 blur-[150px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
     </AppLayout>
   )
