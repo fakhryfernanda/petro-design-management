@@ -344,6 +344,8 @@ async function main() {
     },
   ]
 
+  const createdRequests = []
+
   for (const req of requests) {
     const { tagNames: reqTags, createdAt, ...data } = req
 
@@ -359,10 +361,60 @@ async function main() {
       },
     })
 
+    createdRequests.push(created)
     process.stdout.write('.')
   }
 
   console.log(`\n✅ ${requests.length} design requests created`)
+
+  // ── Reference files (untuk beberapa request) ──────────────────
+  const referenceFiles = [
+    {
+      requestIndex: 0, // Nexus Platform UI
+      name: 'dashboard-mockup.png',
+      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB4dJ6ezCaf9BW8FgA6wGw1jE07LoqjYsKe0XupIaOp-M3TtzMKZpZ7o5vOY4SZhNKYpijpFBJXowLUzESTzJRPmr732ehxm8PjaMlkRy71fsfbUT-vI-4IQtBYYcSfOd80B22WPIoYZCiYhMN-A7rnnVLHA-D0qRHqnIxi3WQ8dA8e7g6yOp-qrMrgi0Feg3wFU7uj_SSqF3XKJoiJerPc7mSu4laO5nNCa61FD0e3ihZPJBfPceVFbw',
+      mimeType: 'image/png',
+    },
+    {
+      requestIndex: 0,
+      name: 'color-palette.png',
+      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBxICXbNpxAqFhlVsSScnevdTYK6CtHvpKHFEC8rDXsY6NZqrHZ8LUWtDqwSUW2MCoJ2VmwNUHj8QDoNmz1m4jm1S_E7S4Q8Ayt91PLCmzIqXsMlfEQLBziPNG79jo0fFkaCsFN-ViorE83osVivMoo0BW0U6PgPmwEmVulm7c9mnZaQMAjhOZNb4f51msiKhgnkdS1IZoW25O1tFkHSu2SjD6nZ4nBFkz71XgGVH6WQCvW0yRlT81x8w',
+      mimeType: 'image/png',
+    },
+    {
+      requestIndex: 1, // Neon Rebranding
+      name: 'logo-concepts.png',
+      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAgtJ9L1KOEyiACigTi1qVOBDQq__Qfv3NmMLKPxOsukjMEYPyRyBm6lKuBYfblJs6kLcPrDgp3mfhmAty3QNw3EfJ1BMzJsIgZ9d6NG2QrOyQom_i5VTBxGd_Ly5V6pngRajXHJU4i96TpFjuy1OyA0H-VqvzqbsbtzhS2bZbaXWXMF2em6Uxvdw0pDumXxVFXZpWzW_Sd4V_BvH5aSVi3MdMUW5eR-OgS9rC13YKaNEBtdlfbD7cRYQ',
+      mimeType: 'image/png',
+    },
+    {
+      requestIndex: 16, // PROJECT-882 Neo-Genesis
+      name: 'landing-reference-1.png',
+      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB4dJ6ezCaf9BW8FgA6wGw1jE07LoqjYsKe0XupIaOp-M3TtzMKZpZ7o5vOY4SZhNKYpijpFBJXowLUzESTzJRPmr732ehxm8PjaMlkRy71fsfbUT-vI-4IQtBYYcSfOd80B22WPIoYZCiYhMN-A7rnnVLHA-D0qRHqnIxi3WQ8dA8e7g6yOp-qrMrgi0Feg3wFU7uj_SSqF3XKJoiJerPc7mSu4laO5nNCa61FD0e3ihZPJBfPceVFbw',
+      mimeType: 'image/png',
+    },
+    {
+      requestIndex: 16,
+      name: 'landing-reference-2.png',
+      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBxICXbNpxAqFhlVsSScnevdTYK6CtHvpKHFEC8rDXsY6NZqrHZ8LUWtDqwSUW2MCoJ2VmwNUHj8QDoNmz1m4jm1S_E7S4Q8Ayt91PLCmzIqXsMlfEQLBziPNG79jo0fFkaCsFN-ViorE83osVivMoo0BW0U6PgPmwEmVulm7c9mnZaQMAjhOZNb4f51msiKhgnkdS1IZoW25O1tFkHSu2SjD6nZ4nBFkz71XgGVH6WQCvW0yRlT81x8w',
+      mimeType: 'image/png',
+    },
+  ]
+
+  for (const f of referenceFiles) {
+    const request = createdRequests[f.requestIndex]
+    if (!request) continue
+    await prisma.file.create({
+      data: {
+        name: f.name,
+        url: f.url,
+        mimeType: f.mimeType,
+        requestId: request.id,
+      },
+    })
+  }
+  console.log(`✅ ${referenceFiles.length} reference files created`)
+
   console.log('🎉 Seed complete!')
 }
 
