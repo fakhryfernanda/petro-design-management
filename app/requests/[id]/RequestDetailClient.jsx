@@ -60,6 +60,9 @@ export default function RequestDetailClient({ id }) {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [showToast, setShowToast] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [descDraft, setDescDraft] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     fetch(`/api/requests/${id}`)
@@ -78,6 +81,37 @@ export default function RequestDetailClient({ id }) {
   const notify = () => {
     setShowToast(true)
     setTimeout(() => setShowToast(false), 3000)
+  }
+
+  const startEdit = () => {
+    setDescDraft(request.description || '')
+    setEditing(true)
+  }
+
+  const cancelEdit = () => {
+    setEditing(false)
+    setDescDraft('')
+  }
+
+  const saveDescription = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: descDraft }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setRequest((prev) => ({ ...prev, ...updated }))
+        setEditing(false)
+        notify()
+      }
+    } catch (e) {
+      console.error('Save error:', e)
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading) {
@@ -155,14 +189,49 @@ export default function RequestDetailClient({ id }) {
           <section className="glass-panel rounded-xl p-md">
             <div className="flex justify-between items-start mb-md">
               <h3 className="text-headline-md text-on-surface">Description</h3>
-              <button className="text-on-surface-variant hover:text-primary flex items-center gap-xs transition-colors">
-                <span className="material-symbols-outlined text-[18px]">edit</span>
-                <span className="text-label-md">Edit</span>
-              </button>
+              {!editing && (
+                <button onClick={startEdit} className="text-on-surface-variant hover:text-primary flex items-center gap-xs transition-colors">
+                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                  <span className="text-label-md">Edit</span>
+                </button>
+              )}
             </div>
-            <p className="text-body-md text-on-surface-variant leading-relaxed">
-              {request.description || 'No description provided.'}
-            </p>
+
+            {editing ? (
+              <div>
+                <textarea
+                  value={descDraft}
+                  onChange={(e) => setDescDraft(e.target.value)}
+                  className="w-full bg-surface-container-highest border border-white/10 rounded-lg p-sm text-body-md text-on-surface placeholder:text-on-surface-variant/40 resize-y min-h-[120px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
+                  placeholder="Write a description..."
+                  autoFocus
+                />
+                <div className="flex justify-end gap-sm mt-sm">
+                  <button
+                    onClick={cancelEdit}
+                    className="px-md py-xs rounded-lg border border-white/10 text-label-md text-on-surface-variant hover:bg-white/5 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveDescription}
+                    disabled={saving}
+                    className="primary-gradient px-md py-xs rounded-lg text-label-md text-white hover:opacity-90 transition-all disabled:opacity-50 flex items-center gap-xs"
+                  >
+                    {saving ? (
+                      <>
+                        <span className="material-symbols-outlined animate-spin text-[16px]">sync</span>
+                        Saving...
+                      </>
+                    ) : 'Save'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-body-md text-on-surface-variant leading-relaxed">
+                {request.description || 'No description provided.'}
+              </p>
+            )}
             <div className="mt-lg pt-md border-t border-white/10">
               <h4 className="text-label-md text-on-surface mb-sm">Reference Files ({request.files.length})</h4>
               {request.files.length === 0 ? (
