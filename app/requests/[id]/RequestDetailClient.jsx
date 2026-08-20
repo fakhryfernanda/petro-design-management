@@ -63,6 +63,7 @@ export default function RequestDetailClient({ id }) {
   const [editing, setEditing] = useState(false)
   const [descDraft, setDescDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(null)
 
   useEffect(() => {
     fetch(`/api/requests/${id}`)
@@ -113,6 +114,25 @@ export default function RequestDetailClient({ id }) {
       setSaving(false)
     }
   }
+
+  const files = request?.files || []
+
+  const openLightbox = (index) => setLightboxIndex(index)
+  const closeLightbox = () => setLightboxIndex(null)
+  const nextImage = () => setLightboxIndex((i) => (i + 1) % files.length)
+  const prevImage = () => setLightboxIndex((i) => (i - 1 + files.length) % files.length)
+
+  // Keyboard navigation untuk lightbox
+  useEffect(() => {
+    if (lightboxIndex === null) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeLightbox()
+      if (e.key === 'ArrowRight') nextImage()
+      if (e.key === 'ArrowLeft') prevImage()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxIndex, files.length])
 
   if (loading) {
     return <AppLayout title="Loading..."><DetailSkeleton /></AppLayout>
@@ -241,8 +261,12 @@ export default function RequestDetailClient({ id }) {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-sm">
-                  {request.files.map((file) => (
-                    <div key={file.id} className="group relative aspect-video rounded-lg overflow-hidden glass-panel border border-white/10 cursor-pointer">
+                  {request.files.map((file, i) => (
+                    <div
+                      key={file.id}
+                      onClick={() => openLightbox(i)}
+                      className="group relative aspect-video rounded-lg overflow-hidden glass-panel border border-white/10 cursor-pointer"
+                    >
                       <img src={file.url} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                         <span className="material-symbols-outlined text-white">visibility</span>
@@ -333,6 +357,69 @@ export default function RequestDetailClient({ id }) {
           </div>
         </div>
       </div>
+
+      {/* Lightbox / Carousel */}
+      {lightboxIndex !== null && files[lightboxIndex] && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md"
+          onClick={closeLightbox}
+        >
+          {/* Image — full screen */}
+          <img
+            src={files[lightboxIndex].url}
+            alt={files[lightboxIndex].name}
+            className="w-full h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Close */}
+          <button
+            onClick={closeLightbox}
+            className="absolute top-lg right-lg p-sm rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+
+          {/* Prev / Next */}
+          {files.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); prevImage() }}
+                className="absolute left-md top-1/2 -translate-y-1/2 p-md rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <span className="material-symbols-outlined text-[28px]">chevron_left</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); nextImage() }}
+                className="absolute right-md top-1/2 -translate-y-1/2 p-md rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <span className="material-symbols-outlined text-[28px]">chevron_right</span>
+              </button>
+            </>
+          )}
+
+          {/* Caption + counter + thumbnails — overlay bawah */}
+          <div className="absolute bottom-lg inset-x-0 flex flex-col items-center gap-sm" onClick={(e) => e.stopPropagation()}>
+            <p className="text-white text-label-md font-medium drop-shadow">{files[lightboxIndex].name}</p>
+            {files.length > 1 && (
+              <p className="text-white/60 text-label-sm">{lightboxIndex + 1} / {files.length}</p>
+            )}
+            {files.length > 1 && (
+              <div className="mt-xs flex gap-sm flex-wrap justify-center">
+                {files.map((f, i) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setLightboxIndex(i)}
+                    className={`w-16 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === lightboxIndex ? 'border-primary' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                  >
+                    <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       <div className={`fixed bottom-lg right-lg glass-panel-high rounded-xl p-md flex items-center gap-md transition-all duration-500 z-50 ${showToast ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'}`}>
