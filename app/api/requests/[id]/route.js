@@ -39,3 +39,34 @@ export async function GET(request, { params }) {
 
   return NextResponse.json(formatted)
 }
+
+export async function PATCH(request, { params }) {
+  const { id } = await params
+  const parsedId = parseInt(id)
+
+  if (Number.isNaN(parsedId)) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
+
+  const body = await request.json()
+
+  const data = {}
+  if (typeof body.description === 'string') data.description = body.description
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+  }
+
+  try {
+    const updated = await prisma.designRequest.update({
+      where: { id: parsedId },
+      data,
+    })
+    return NextResponse.json(updated)
+  } catch (e) {
+    if (e.code === 'P2025') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    throw e
+  }
+}
