@@ -1,6 +1,58 @@
 import { prisma } from '../../../lib/db'
 import { NextResponse } from 'next/server'
 
+export async function POST(request) {
+  const body = await request.json()
+
+  const title = body.title?.trim()
+  const category = body.category?.trim()
+  const client = body.client?.trim()
+
+  if (!title || !category || !client) {
+    return NextResponse.json(
+      { error: 'Title, category, and client are required' },
+      { status: 400 }
+    )
+  }
+
+  const projectType = body.projectType?.trim() || null
+  const tags = Array.isArray(body.tags) ? body.tags.map((t) => String(t).trim()).filter(Boolean) : []
+
+  const req = await prisma.designRequest.create({
+    data: {
+      title,
+      category,
+      client,
+      product:     body.product?.trim()    || null,
+      description: body.description?.trim() || null,
+      priority:    body.priority           || 'Medium',
+      projectType,
+      status:      'In Progress',
+      progress:    0,
+      deadline:    body.deadline ? new Date(body.deadline) : null,
+    },
+  })
+
+  // Attach tags (buat kalau belum ada)
+  if (tags.length > 0) {
+    for (const name of tags) {
+      const tag = await prisma.tag.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      })
+      await prisma.requestTag.create({
+        data: {
+          requestId: req.id,
+          tagId: tag.id,
+        },
+      })
+    }
+  }
+
+  return NextResponse.json(req, { status: 201 })
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
 
