@@ -112,12 +112,21 @@ export default function RequestDetailClient({ id }) {
     }
   }
 
-  const files = request?.files || []
+  const files      = request?.files || []
+  const imageFiles = files.filter((f) => f.mimeType !== 'application/pdf')
+  const pdfFiles   = files.filter((f) => f.mimeType === 'application/pdf')
 
   const openLightbox = (index) => setLightboxIndex(index)
   const closeLightbox = () => setLightboxIndex(null)
-  const nextImage = () => setLightboxIndex((i) => (i + 1) % files.length)
-  const prevImage = () => setLightboxIndex((i) => (i - 1 + files.length) % files.length)
+  const nextImage = () => setLightboxIndex((i) => (i + 1) % imageFiles.length)
+  const prevImage = () => setLightboxIndex((i) => (i - 1 + imageFiles.length) % imageFiles.length)
+
+  function formatSize(bytes) {
+    if (!bytes) return ''
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0]
@@ -273,9 +282,10 @@ export default function RequestDetailClient({ id }) {
                 {request.description || 'No description provided.'}
               </p>
             )}
-            <div className="mt-lg pt-md border-t border-white/10">
-              <div className="flex items-center justify-between mb-sm">
-                <h4 className="text-label-md text-on-surface">Reference Files ({request.files.length})</h4>
+            <div className="mt-lg pt-md border-t border-white/10 space-y-md">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <h4 className="text-label-md text-on-surface">Reference Files ({files.length})</h4>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
@@ -294,7 +304,9 @@ export default function RequestDetailClient({ id }) {
                   onChange={handleFileSelect}
                 />
               </div>
-              {request.files.length === 0 ? (
+
+              {/* Empty state */}
+              {files.length === 0 && (
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm py-lg text-center cursor-pointer hover:border-primary/40 transition-colors group"
@@ -302,28 +314,83 @@ export default function RequestDetailClient({ id }) {
                   <span className="material-symbols-outlined text-on-surface-variant/40 mb-xs group-hover:text-primary/50 transition-colors">upload_file</span>
                   <span className="text-[12px] text-on-surface-variant/60 group-hover:text-on-surface-variant transition-colors">Click to upload a reference file</span>
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-sm">
-                  {request.files.map((file, i) => (
-                    <div
-                      key={file.id}
-                      onClick={() => openLightbox(i)}
-                      className="group relative aspect-video rounded-lg overflow-hidden glass-panel border border-white/10 cursor-pointer"
-                    >
-                      <img src={file.url} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <span className="material-symbols-outlined text-white">visibility</span>
+              )}
+
+              {/* Images grid */}
+              {imageFiles.length > 0 && (
+                <div>
+                  <p className="text-[11px] text-on-surface-variant/50 uppercase tracking-widest mb-xs">Images</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-sm">
+                    {imageFiles.map((file, i) => (
+                      <div
+                        key={file.id}
+                        className="group relative aspect-video rounded-lg overflow-hidden glass-panel border border-white/10 cursor-pointer"
+                      >
+                        <img
+                          src={file.url}
+                          alt={file.name}
+                          onClick={() => openLightbox(i)}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-sm transition-opacity">
+                          <button
+                            onClick={() => openLightbox(i)}
+                            className="p-xs rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">visibility</span>
+                          </button>
+                        </div>
                       </div>
+                    ))}
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm hover:border-primary/50 transition-colors cursor-pointer group aspect-video"
+                    >
+                      <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary mb-xs">add_photo_alternate</span>
+                      <span className="text-[10px] font-bold text-on-surface-variant group-hover:text-primary uppercase tracking-tighter">Add Image</span>
                     </div>
-                  ))}
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm hover:border-primary/50 transition-colors cursor-pointer group"
-                  >
-                    <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary mb-xs">add_circle</span>
-                    <span className="text-[10px] font-bold text-on-surface-variant group-hover:text-primary uppercase tracking-tighter">Add Reference</span>
                   </div>
                 </div>
+              )}
+
+              {/* Documents list */}
+              {pdfFiles.length > 0 && (
+                <div>
+                  <p className="text-[11px] text-on-surface-variant/50 uppercase tracking-widest mb-xs">Documents</p>
+                  <div className="space-y-xs">
+                    {pdfFiles.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center gap-sm px-sm py-xs rounded-lg glass-card hover:border-white/20 hover:bg-white/5 transition-all group"
+                      >
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-sm flex-1 min-w-0"
+                        >
+                          <span className="material-symbols-outlined text-error text-[24px] flex-shrink-0">picture_as_pdf</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-label-md text-on-surface truncate">{file.name}</p>
+                            {file.size && <p className="text-[11px] text-on-surface-variant/60">{formatSize(file.size)}</p>}
+                          </div>
+                          <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-[18px] flex-shrink-0">open_in_new</span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add file button when files exist but no images yet */}
+              {files.length > 0 && imageFiles.length === 0 && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-xs text-label-sm text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
+                  Add image reference
+                </button>
               )}
             </div>
           </section>
@@ -403,68 +470,72 @@ export default function RequestDetailClient({ id }) {
         </div>
       </div>
 
-      {/* Lightbox / Carousel */}
-      {lightboxIndex !== null && files[lightboxIndex] && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md"
-          onClick={closeLightbox}
-        >
-          {/* Image — full screen */}
-          <img
-            src={files[lightboxIndex].url}
-            alt={files[lightboxIndex].name}
-            className="w-full h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-
-          {/* Close */}
-          <button
+      {/* Lightbox — images only */}
+      {lightboxIndex !== null && imageFiles[lightboxIndex] && (() => {
+        const current = imageFiles[lightboxIndex]
+        return (
+          <div
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md"
             onClick={closeLightbox}
-            className="absolute top-lg right-lg p-sm rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
           >
-            <span className="material-symbols-outlined">close</span>
-          </button>
+            <img
+              src={current.url}
+              alt={current.name}
+              className="w-full h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
 
-          {/* Prev / Next */}
-          {files.length > 1 && (
-            <>
+            {/* Close */}
+            <div className="absolute top-lg right-lg flex gap-sm z-10">
               <button
-                onClick={(e) => { e.stopPropagation(); prevImage() }}
-                className="absolute left-md top-1/2 -translate-y-1/2 p-md rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                onClick={closeLightbox}
+                className="p-sm rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
               >
-                <span className="material-symbols-outlined text-[28px]">chevron_left</span>
+                <span className="material-symbols-outlined">close</span>
               </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); nextImage() }}
-                className="absolute right-md top-1/2 -translate-y-1/2 p-md rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-              >
-                <span className="material-symbols-outlined text-[28px]">chevron_right</span>
-              </button>
-            </>
-          )}
+            </div>
 
-          {/* Caption + counter + thumbnails — overlay bawah */}
-          <div className="absolute bottom-lg inset-x-0 flex flex-col items-center gap-sm" onClick={(e) => e.stopPropagation()}>
-            <p className="text-white text-label-md font-medium drop-shadow">{files[lightboxIndex].name}</p>
-            {files.length > 1 && (
-              <p className="text-white/60 text-label-sm">{lightboxIndex + 1} / {files.length}</p>
+            {/* Prev / Next */}
+            {imageFiles.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); prevImage() }}
+                  className="absolute left-md top-1/2 -translate-y-1/2 p-md rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[28px]">chevron_left</span>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); nextImage() }}
+                  className="absolute right-md top-1/2 -translate-y-1/2 p-md rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[28px]">chevron_right</span>
+                </button>
+              </>
             )}
-            {files.length > 1 && (
-              <div className="mt-xs flex gap-sm flex-wrap justify-center">
-                {files.map((f, i) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setLightboxIndex(i)}
-                    className={`w-16 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === lightboxIndex ? 'border-primary' : 'border-transparent opacity-50 hover:opacity-100'}`}
-                  >
-                    <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
+
+            {/* Caption + counter + thumbnails */}
+            <div className="absolute bottom-lg inset-x-0 flex flex-col items-center gap-sm pointer-events-none">
+              <p className="text-white text-label-md font-medium drop-shadow">{current.name}</p>
+              {imageFiles.length > 1 && (
+                <p className="text-white/60 text-label-sm">{lightboxIndex + 1} / {imageFiles.length}</p>
+              )}
+              {imageFiles.length > 1 && (
+                <div className="mt-xs flex gap-sm flex-wrap justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                  {imageFiles.map((f, i) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setLightboxIndex(i)}
+                      className={`w-16 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === lightboxIndex ? 'border-primary' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                    >
+                      <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Toast */}
       <div className={`fixed bottom-lg right-lg glass-panel-high rounded-xl p-md flex items-center gap-md transition-all duration-500 z-50 ${showToast ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'}`}>
