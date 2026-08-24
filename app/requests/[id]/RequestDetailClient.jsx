@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import AppLayout from '../../../components/layout/AppLayout'
 
@@ -26,11 +26,6 @@ function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
   })
-}
-
-function formatCurrency(num) {
-  if (num == null) return '—'
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num)
 }
 
 // ── Skeleton ──────────────────────────────────────────────────
@@ -64,6 +59,8 @@ export default function RequestDetailClient({ id }) {
   const [descDraft, setDescDraft] = useState('')
   const [saving, setSaving] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     fetch(`/api/requests/${id}`)
@@ -121,6 +118,30 @@ export default function RequestDetailClient({ id }) {
   const closeLightbox = () => setLightboxIndex(null)
   const nextImage = () => setLightboxIndex((i) => (i + 1) % files.length)
   const prevImage = () => setLightboxIndex((i) => (i - 1 + files.length) % files.length)
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`/api/requests/${id}/files`, { method: 'POST', body: form })
+      if (res.ok) {
+        const newFile = await res.json()
+        setRequest((prev) => ({ ...prev, files: [...prev.files, newFile] }))
+        notify()
+      } else {
+        const json = await res.json().catch(() => ({}))
+        console.error('Upload failed:', json.error)
+      }
+    } catch (e) {
+      console.error('Upload error:', e)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   // Keyboard navigation untuk lightbox
   useEffect(() => {
@@ -253,11 +274,33 @@ export default function RequestDetailClient({ id }) {
               </p>
             )}
             <div className="mt-lg pt-md border-t border-white/10">
-              <h4 className="text-label-md text-on-surface mb-sm">Reference Files ({request.files.length})</h4>
+              <div className="flex items-center justify-between mb-sm">
+                <h4 className="text-label-md text-on-surface">Reference Files ({request.files.length})</h4>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-xs text-label-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                >
+                  {uploading
+                    ? <><span className="material-symbols-outlined animate-spin text-[16px]">sync</span> Uploading...</>
+                    : <><span className="material-symbols-outlined text-[16px]">upload</span> Upload</>
+                  }
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf,.svg"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </div>
               {request.files.length === 0 ? (
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm py-lg text-center">
-                  <span className="material-symbols-outlined text-on-surface-variant/40 mb-xs">image</span>
-                  <span className="text-[12px] text-on-surface-variant/60">No reference files</span>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm py-lg text-center cursor-pointer hover:border-primary/40 transition-colors group"
+                >
+                  <span className="material-symbols-outlined text-on-surface-variant/40 mb-xs group-hover:text-primary/50 transition-colors">upload_file</span>
+                  <span className="text-[12px] text-on-surface-variant/60 group-hover:text-on-surface-variant transition-colors">Click to upload a reference file</span>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-sm">
@@ -273,7 +316,10 @@ export default function RequestDetailClient({ id }) {
                       </div>
                     </div>
                   ))}
-                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm hover:border-primary/50 transition-colors cursor-pointer group">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm hover:border-primary/50 transition-colors cursor-pointer group"
+                  >
                     <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary mb-xs">add_circle</span>
                     <span className="text-[10px] font-bold text-on-surface-variant group-hover:text-primary uppercase tracking-tighter">Add Reference</span>
                   </div>
@@ -306,10 +352,9 @@ export default function RequestDetailClient({ id }) {
             <h3 className="text-label-md text-on-surface-variant uppercase tracking-widest mb-sm">Project Info</h3>
             <div className="space-y-sm">
               {[
-                { label: 'Client',       value: request.client,        cls: '' },
-                { label: 'Deadline',     value: deadline,              cls: 'text-error', icon: 'calendar_today' },
+                { label: 'Client',       value: request.client,             cls: '' },
+                { label: 'Deadline',     value: deadline,                   cls: 'text-error', icon: 'calendar_today' },
                 { label: 'Project Type', value: request.projectType || '—', cls: '' },
-                { label: 'Budget',       value: formatCurrency(request.budget), cls: 'text-tertiary' },
               ].map(({ label, value, cls, icon }) => (
                 <div key={label} className="flex justify-between items-center py-sm border-b border-white/5">
                   <span className="text-on-surface-variant opacity-60 text-label-md">{label}</span>
