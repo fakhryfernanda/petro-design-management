@@ -18,6 +18,9 @@ dist/
 prisma/dev.db
 prisma/dev.db-journal
 
+# User uploads (local prototype storage)
+public/uploads/
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
