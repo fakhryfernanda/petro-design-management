@@ -152,6 +152,23 @@ export default function RequestDetailClient({ id }) {
     }
   }
 
+  const deleteFileById = async (fileId) => {
+    if (!confirm('Delete this file?')) return
+    try {
+      const res = await fetch(`/api/requests/${id}/files`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId }),
+      })
+      if (res.ok) {
+        setRequest((prev) => ({ ...prev, files: prev.files.filter((f) => f.id !== fileId) }))
+        if (lightboxIndex !== null) setLightboxIndex(null)
+      }
+    } catch (e) {
+      console.error('Delete error:', e)
+    }
+  }
+
   // Keyboard navigation untuk lightbox
   useEffect(() => {
     if (lightboxIndex === null) return
@@ -339,6 +356,12 @@ export default function RequestDetailClient({ id }) {
                           >
                             <span className="material-symbols-outlined text-[20px]">visibility</span>
                           </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteFileById(file.id) }}
+                            className="p-xs rounded-full bg-error/70 hover:bg-error text-white transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -376,6 +399,12 @@ export default function RequestDetailClient({ id }) {
                           </div>
                           <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-[18px] flex-shrink-0">open_in_new</span>
                         </a>
+                        <button
+                          onClick={() => deleteFileById(file.id)}
+                          className="p-xs rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -485,8 +514,14 @@ export default function RequestDetailClient({ id }) {
               onClick={(e) => e.stopPropagation()}
             />
 
-            {/* Close */}
+            {/* Close + Delete */}
             <div className="absolute top-lg right-lg flex gap-sm z-10">
+              <button
+                onClick={() => deleteFileById(current.id)}
+                className="p-sm rounded-full bg-error/70 hover:bg-error text-white transition-colors"
+              >
+                <span className="material-symbols-outlined">delete</span>
+              </button>
               <button
                 onClick={closeLightbox}
                 className="p-sm rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
