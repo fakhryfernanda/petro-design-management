@@ -477,24 +477,7 @@ export default function RequestDetailClient({ id }) {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="grid grid-cols-2 gap-sm pt-md">
-              {[
-                { icon: 'download', label: 'Export PDF',  color: 'text-primary' },
-                { icon: 'history',  label: 'Version Log', color: 'text-secondary' },
-              ].map(({ icon, label, color }) => (
-                <button key={label} className="flex flex-col items-center justify-center p-sm glass-panel rounded-xl hover:bg-white/10 transition-colors group">
-                  <span className={`material-symbols-outlined mb-xs group-hover:scale-110 transition-transform ${color}`}>{icon}</span>
-                  <span className="text-[10px] font-bold text-on-surface-variant uppercase">{label}</span>
-                </button>
-              ))}
-            </div>
 
-            <button onClick={notify}
-              className="w-full py-sm rounded-xl border border-white/10 text-on-surface-variant text-label-md hover:bg-error/10 hover:text-error hover:border-error/20 transition-all flex items-center justify-center gap-xs">
-              <span className="material-symbols-outlined text-[18px]">archive</span>
-              Archive Project
-            </button>
           </div>
         </div>
       </div>
