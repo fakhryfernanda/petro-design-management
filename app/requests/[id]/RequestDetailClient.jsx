@@ -61,6 +61,9 @@ export default function RequestDetailClient({ id }) {
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
+  const [statusOpen, setStatusOpen] = useState(false)
+
+  const STATUSES = ['In Progress', 'Review', 'Revision', 'Completed', 'On Hold']
 
   useEffect(() => {
     fetch(`/api/requests/${id}`)
@@ -109,6 +112,25 @@ export default function RequestDetailClient({ id }) {
       console.error('Save error:', e)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const changeStatus = async (newStatus) => {
+    setStatusOpen(false)
+    if (newStatus === request.status) return
+    try {
+      const res = await fetch(`/api/requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, currentProgress: request.progress }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setRequest((prev) => ({ ...prev, ...updated }))
+        notify()
+      }
+    } catch (e) {
+      console.error('Status error:', e)
     }
   }
 
@@ -169,6 +191,13 @@ export default function RequestDetailClient({ id }) {
     }
   }
 
+  useEffect(() => {
+    if (!statusOpen) return
+    const close = (e) => { if (!e.target.closest('[data-status-dropdown]')) setStatusOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [statusOpen])
+
   // Keyboard navigation untuk lightbox
   useEffect(() => {
     if (lightboxIndex === null) return
@@ -224,9 +253,30 @@ export default function RequestDetailClient({ id }) {
     <AppLayout
       title={request.title}
       headerActions={
-        <span className={`px-sm py-1 rounded-full text-[12px] font-bold ${getStatusStyle(request.status)}`}>
-          {request.status.toUpperCase()}
-        </span>
+        <div className="relative" data-status-dropdown>
+          <button
+            onClick={() => setStatusOpen((o) => !o)}
+            className={`px-sm py-1 rounded-full text-[12px] font-bold flex items-center gap-xs hover:opacity-80 transition-opacity ${getStatusStyle(request.status)}`}
+          >
+            {request.status.toUpperCase()}
+            <span className="material-symbols-outlined text-[14px]">expand_more</span>
+          </button>
+          {statusOpen && (
+            <div className="absolute right-0 top-full mt-xs glass-panel-high rounded-xl overflow-hidden z-50 min-w-[160px] shadow-xl">
+              {STATUSES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => changeStatus(s)}
+                  className={`w-full text-left px-md py-sm text-label-md hover:bg-white/10 transition-colors flex items-center gap-xs ${s === request.status ? 'text-primary' : 'text-on-surface'}`}
+                >
+                  {s === request.status && <span className="material-symbols-outlined text-[14px]">check</span>}
+                  {s !== request.status && <span className="w-[14px]" />}
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       }
     >
       <div className="px-lg pt-md">
