@@ -50,8 +50,19 @@ export async function PATCH(request, { params }) {
 
   const body = await request.json()
 
+  const VALID_STATUSES = ['In Progress', 'Review', 'Revision', 'Completed', 'On Hold']
+
   const data = {}
   if (typeof body.description === 'string') data.description = body.description
+  if (typeof body.status === 'string' && VALID_STATUSES.includes(body.status)) {
+    data.status = body.status
+    // Semi-auto progress
+    if (body.status === 'Completed') data.progress = 100
+    if (body.status === 'Review' && (body.currentProgress ?? 100) < 90) data.progress = 90
+  }
+  if (typeof body.progress === 'number') {
+    data.progress = Math.min(100, Math.max(0, Math.round(body.progress)))
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })

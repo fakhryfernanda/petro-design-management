@@ -62,6 +62,8 @@ export default function RequestDetailClient({ id }) {
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
   const [statusOpen, setStatusOpen] = useState(false)
+  const [savingProgress, setSavingProgress] = useState(false)
+  const [progressDraft, setProgressDraft] = useState(null)
 
   const STATUSES = ['In Progress', 'Review', 'Revision', 'Completed', 'On Hold']
 
@@ -134,6 +136,29 @@ export default function RequestDetailClient({ id }) {
     }
   }
 
+  const saveProgress = async (value) => {
+    const parsed = Math.min(100, Math.max(0, parseInt(value) || 0))
+    setProgressDraft(null)
+    if (parsed === request.progress) return
+    setSavingProgress(true)
+    try {
+      const res = await fetch(`/api/requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ progress: parsed }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setRequest((prev) => ({ ...prev, ...updated }))
+        notify()
+      }
+    } catch (e) {
+      console.error('Progress error:', e)
+    } finally {
+      setSavingProgress(false)
+    }
+  }
+
   const files      = request?.files || []
   const imageFiles = files.filter((f) => f.mimeType !== 'application/pdf')
   const pdfFiles   = files.filter((f) => f.mimeType === 'application/pdf')
@@ -191,6 +216,7 @@ export default function RequestDetailClient({ id }) {
     }
   }
 
+  // Keyboard navigation untuk lightbox
   useEffect(() => {
     if (!statusOpen) return
     const close = (e) => { if (!e.target.closest('[data-status-dropdown]')) setStatusOpen(false) }
@@ -198,7 +224,6 @@ export default function RequestDetailClient({ id }) {
     return () => document.removeEventListener('mousedown', close)
   }, [statusOpen])
 
-  // Keyboard navigation untuk lightbox
   useEffect(() => {
     if (lightboxIndex === null) return
     const onKey = (e) => {
@@ -518,16 +543,30 @@ export default function RequestDetailClient({ id }) {
 
             {/* Progress */}
             <div className="pt-md">
-              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mb-xs">Progress</p>
-              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full primary-gradient rounded-full" style={{ width: `${request.progress || 0}%` }} />
+              <div className="flex items-center justify-between mb-xs">
+                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Progress</p>
+                <div className="flex items-center gap-xs">
+                  {savingProgress && <span className="material-symbols-outlined animate-spin text-[14px] text-on-surface-variant">sync</span>}
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={progressDraft ?? request.progress ?? 0}
+                    onChange={(e) => setProgressDraft(e.target.value)}
+                    onBlur={(e) => saveProgress(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+                    className="w-14 bg-transparent border-b border-white/20 text-right text-label-md text-on-surface focus:outline-none focus:border-primary transition-colors"
+                  />
+                  <span className="text-[12px] text-on-surface-variant">%</span>
+                </div>
               </div>
-              <div className="flex justify-between mt-xs">
-                <span className="text-[12px] text-on-surface-variant">{request.progress || 0}% Completed</span>
+              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className="h-full primary-gradient rounded-full transition-all duration-300"
+                  style={{ width: `${progressDraft ?? request.progress ?? 0}%` }}
+                />
               </div>
             </div>
-
-
           </div>
         </div>
       </div>
