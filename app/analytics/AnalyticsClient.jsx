@@ -1,219 +1,286 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import AppLayout from '../../components/layout/AppLayout'
 
-const KPI = [
-  { icon:'pending_actions', iconColor:'text-primary',   value:'142',  label:'Active Requests',     delta:'+12%',   deltaColor:'text-tertiary-fixed-dim' },
-  { icon:'check_circle',    iconColor:'text-secondary', value:'89',   label:'Completed This Week', delta:'+8%',    deltaColor:'text-green-400' },
-  { icon:'schedule',        iconColor:'text-tertiary',  value:'4.2d', label:'Avg. Turnaround',     delta:'-2.4h',  deltaColor:'text-error' },
-  { icon:'groups',          iconColor:'text-primary',   value:'12',   label:'Active Designers',    delta:'Steady', deltaColor:'text-on-surface-variant' },
-]
+// ── Helpers ───────────────────────────────────────────────────
+const STATUS_COLOR = {
+  'Completed':   '#22c55e',
+  'In Progress': '#3B82F6',
+  'Review':      '#4cd7f6',
+  'Revision':    '#8B5CF6',
+  'On Hold':     '#8c909f',
+}
 
-const BARS = [
-  { day:'MON', h:65,  tip:42,  highlight:false },
-  { day:'TUE', h:85,  tip:58,  highlight:false },
-  { day:'WED', h:95,  tip:64,  highlight:true  },
-  { day:'THU', h:75,  tip:51,  highlight:false },
-  { day:'FRI', h:45,  tip:30,  highlight:false },
-]
+function Skeleton({ className = '' }) {
+  return <div className={`animate-pulse bg-white/10 rounded-lg ${className}`} />
+}
 
-const DESIGNERS = [
-  { name:'Elena Vance',   role:'UI/UX Senior', projects:8,  capacity:80,  efficiency:'98.2%', effColor:'text-tertiary',  stars:4.5, barColor:'primary-gradient', img:'https://lh3.googleusercontent.com/aida-public/AB6AXuCXCwRXAHM0lMKBhVQNOqAaWYsNa-azpcxKw57roTiQf7PzffAMQVjXJBvdtuy6jkW2hVjMJJxUcLz3XNkb7ltN7pwnRPNbvlgVez1shVycaxGRZRXcCiwwKB9yhDnCXKeRxqBvCW0y7SuJeUE7-Ts_SM3c_HvxljYdGO8GN9cydTuHiu7oxmLsmYM2iCdnzFm3uKHz6h9rNV6p33-2_vdK-zUWIMg3npr1GSx6EGwCcGB2BPM3Eh-nTA' },
-  { name:'Marcus Thorne', role:'3D Artist',     projects:12, capacity:100, efficiency:'85.4%', effColor:'text-secondary', stars:4,   barColor:'bg-error',         img:'https://lh3.googleusercontent.com/aida-public/AB6AXuD2nQmc6DYN2posrGJ0KYzax_CRjcJACglUHPMwcX0pb-o812bLp86Yekop87dPXDkP91c4TcuvXPLPcRt6Xe4mLRbULn2LcXkUM7qEG4kSL0P2Knf2q8fRKAgjrlHglsSx1jS5-cCCxeIgt3FHUUfTKiyWsZl5uw01DtjlER6oJfVBJuRcmuIQ5gtdP7kNQDfbxi-gGkBrHExv-0EtejscBXdFl4-D1jmz4WloKrKfqz1QIQqa2yzM6w' },
-  { name:'Sarah Jenkins', role:'Illustrator',   projects:5,  capacity:45,  efficiency:'94.8%', effColor:'text-tertiary',  stars:5,   barColor:'bg-green-500/60',  img:'https://lh3.googleusercontent.com/aida-public/AB6AXuCmUJySXk0t0e8XuMfgMe6N9xyQUj0SpnsTaDfMKyLbH-WeV_7HvUgf1PZ6tkHqmorvA7upaBovJGTiGBnBgdZOwJaqEaRWxZYIWEbjTTJehDqZnLy5M4e4ICIbhPTxZc0Oaj3BWBOMGKz3Mj6ruLbXcyNx8JaukB7c1ADfwMj1tu1DE6xR1jpnXl-WSfE0gu1gzhn0e-v_vaoLLWV_qSIa3qjuKDeGL1X3LHZ90gMF874BCulRICQW4w' },
-]
-
-function Stars({ count }) {
+// ── Pie chart (dynamic segments) ─────────────────────────────
+function PieChart({ data, total }) {
+  let offset = 0
+  const segments = data.map((d) => {
+    const seg = { ...d, offset }
+    offset += d.pct
+    return seg
+  })
   return (
-    <div className="flex items-center gap-0.5 text-primary">
-      {[1,2,3,4,5].map((i) => (
-        <span key={i} className="material-symbols-outlined text-[16px]"
-          style={{ fontVariationSettings: i <= Math.floor(count) ? '"FILL" 1' : i - 0.5 === count ? '"FILL" 0.5' : '"FILL" 0' }}>
-          {i - 0.5 === count ? 'star_half' : 'star'}
-        </span>
+    <div className="flex flex-1 items-center gap-lg">
+      <div className="relative w-44 h-44 flex-shrink-0">
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" fill="none" r="15.9" stroke="#2d3449" strokeWidth="3" />
+          {segments.map((s) => (
+            <circle key={s.status} cx="18" cy="18" fill="none" r="15.9"
+              stroke={STATUS_COLOR[s.status] || '#8c909f'}
+              strokeDasharray={`${s.pct} 100`}
+              strokeDashoffset={-s.offset}
+              strokeLinecap="round" strokeWidth="3"
+            />
+          ))}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-headline-md font-bold">{total}</span>
+          <span className="text-[10px] text-on-surface-variant">Total</span>
+        </div>
+      </div>
+      <div className="flex-1 space-y-sm">
+        {data.map((d) => (
+          <div key={d.status} className="flex items-center justify-between">
+            <div className="flex items-center gap-sm">
+              <div className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR[d.status] || '#8c909f' }} />
+              <span className="text-label-sm">{d.status}</span>
+            </div>
+            <span className="text-label-sm text-on-surface-variant">{d.count} <span className="text-on-surface-variant/50">({d.pct}%)</span></span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Line chart (monthly) ─────────────────────────────────────
+function LineChart({ data }) {
+  if (!data?.length) return <Skeleton className="flex-1 min-h-[220px]" />
+  const max = Math.max(...data.map((d) => d.count), 1)
+  const W = 800, H = 220, PAD = 20
+  const pts = data.map((d, i) => {
+    const x = PAD + (i / (data.length - 1)) * (W - PAD * 2)
+    const y = H - PAD - ((d.count / max) * (H - PAD * 2))
+    return [x, y]
+  })
+  const pathD = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x} ${y}`).join(' ')
+  const areaD = `${pathD} L ${pts[pts.length - 1][0]} ${H} L ${pts[0][0]} ${H} Z`
+
+  return (
+    <div className="flex-1 w-full min-h-[220px] relative">
+      <svg className="absolute inset-0 w-full h-full overflow-visible"
+        preserveAspectRatio="xMidYMid meet" viewBox={`0 0 ${W} ${H + 20}`}>
+        <defs>
+          <linearGradient id="lg-area" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
+          </linearGradient>
+          <filter id="ln-glow">
+            <feGaussianBlur stdDeviation="3" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        <path d={areaD} fill="url(#lg-area)" />
+        <path d={pathD} fill="none" stroke="#3B82F6" strokeWidth="3" filter="url(#ln-glow)" strokeLinejoin="round" />
+        {pts.map(([x, y], i) => (
+          <g key={i}>
+            <circle cx={x} cy={y} r="5" fill="#3B82F6" />
+            <text x={x} y={y - 12} textAnchor="middle" fontSize="10" fill="#adc6ff" fontWeight="bold">
+              {data[i].count > 0 ? data[i].count : ''}
+            </text>
+          </g>
+        ))}
+        {data.map((d, i) => {
+          const x = PAD + (i / (data.length - 1)) * (W - PAD * 2)
+          return (
+            <text key={i} x={x} y={H + 15} textAnchor="middle" fontSize="9"
+              fill="#c2c6d6" fontWeight="bold" letterSpacing="1">
+              {d.label.toUpperCase()}
+            </text>
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
+// ── Category bar chart (horizontal) ──────────────────────────
+function CategoryChart({ data }) {
+  if (!data?.length) return <Skeleton className="h-64" />
+  const max = Math.max(...data.map((d) => d.count), 1)
+  const COLORS = ['primary-gradient', 'bg-secondary/60', 'bg-tertiary/60', 'bg-error/60', 'bg-outline/60', 'bg-surface-bright']
+
+  return (
+    <div className="space-y-sm">
+      {data.map((d, i) => (
+        <div key={d.category} className="flex items-center gap-sm">
+          <span className="text-label-sm text-on-surface-variant w-36 truncate flex-shrink-0">{d.category}</span>
+          <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${COLORS[i] || 'bg-primary/50'}`}
+              style={{ width: `${(d.count / max) * 100}%` }}
+            />
+          </div>
+          <span className="text-label-sm text-on-surface w-6 text-right flex-shrink-0">{d.count}</span>
+        </div>
       ))}
     </div>
   )
 }
 
-const headerActions = (
-  <div className="flex items-center gap-sm">
-    <div className="flex items-center gap-xs bg-surface-container-low px-sm py-1.5 rounded-full border border-white/5 cursor-pointer hover:bg-surface-container transition-colors">
-      <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-      <span className="text-label-sm">Oct 1 – Oct 31, 2023</span>
-      <span className="material-symbols-outlined text-[18px]">expand_more</span>
-    </div>
-    <div className="flex items-center bg-white/5 rounded-lg p-0.5 border border-white/10">
-      {[{icon:'picture_as_pdf',label:'PDF'},{icon:'table_view',label:'Excel'}].map(({icon,label})=>(
-        <button key={label} className="px-sm py-1.5 text-label-sm hover:bg-white/5 rounded-md flex items-center gap-1 transition-all">
-          <span className="material-symbols-outlined text-[16px]">{icon}</span> {label}
-        </button>
-      ))}
-    </div>
-  </div>
-)
-
+// ── Main ──────────────────────────────────────────────────────
 export default function AnalyticsClient() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/analytics')
+      .then((r) => r.json())
+      .then(setData)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  const kpi = data?.kpi
+  const KPI_CARDS = kpi ? [
+    { icon: 'pending_actions', iconColor: 'text-primary',   value: kpi.activeRequests,    label: 'Active Requests',    delta: null },
+    { icon: 'check_circle',    iconColor: 'text-green-400', value: kpi.completedRequests, label: 'Completed',          delta: null },
+    { icon: 'analytics',       iconColor: 'text-secondary', value: kpi.totalRequests,     label: 'Total Requests',     delta: null },
+    { icon: 'groups',          iconColor: 'text-tertiary',  value: kpi.activeDesigners,   label: 'Active Designers',   delta: null },
+  ] : []
+
   return (
-    <AppLayout title="Reports &amp; Analytics" headerActions={headerActions}>
+    <AppLayout title="Reports &amp; Analytics">
       <div className="p-lg space-y-gutter">
 
-        {/* Row 1 */}
+        {/* KPI Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-          <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-sm">
-            {KPI.map((k) => (
-              <div key={k.label} className="glass-panel p-md rounded-xl flex flex-col justify-between hover:-translate-y-1 transition-transform">
-                <div className="flex items-center justify-between">
+          <div className="lg:col-span-4 grid grid-cols-2 gap-sm">
+            {loading
+              ? [1,2,3,4].map((i) => <Skeleton key={i} className="h-24" />)
+              : KPI_CARDS.map((k) => (
+                <div key={k.label} className="glass-panel p-md rounded-xl flex flex-col justify-between hover:-translate-y-1 transition-transform">
                   <span className={`material-symbols-outlined ${k.iconColor}`}>{k.icon}</span>
-                  <span className={`text-label-sm ${k.deltaColor}`}>{k.delta}</span>
+                  <div>
+                    <h4 className="text-headline-md font-bold">{k.value}</h4>
+                    <p className="text-label-sm text-on-surface-variant">{k.label}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-headline-md font-bold">{k.value}</h4>
-                  <p className="text-label-sm text-on-surface-variant">{k.label}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            }
           </div>
 
-          {/* Line Chart */}
+          {/* Line chart */}
           <div className="lg:col-span-8 glass-panel p-md rounded-xl flex flex-col">
             <div className="flex items-center justify-between mb-md">
               <div>
-                <h3 className="text-label-md text-on-surface font-bold">Monthly Productivity Growth</h3>
-                <p className="text-xs text-on-surface-variant opacity-60">Total output volume vs. resources</p>
+                <h3 className="text-label-md text-on-surface font-bold">Requests per Month</h3>
+                <p className="text-xs text-on-surface-variant opacity-60">Last 6 months</p>
               </div>
               <div className="flex items-center gap-sm bg-white/5 px-3 py-1 rounded-full border border-white/5">
                 <span className="w-2 h-2 rounded-full bg-primary" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Volume</span>
               </div>
             </div>
-            <div className="flex-1 w-full min-h-[240px] relative">
-              <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="xMidYMid meet" viewBox="0 0 800 240">
-                <defs>
-                  <linearGradient id="lg" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
-                  </linearGradient>
-                  <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                </defs>
-                <path d="M0 180 Q 50 140 100 160 T 200 100 T 300 120 T 400 60 T 500 80 T 600 40 T 700 90 T 800 30" fill="none" stroke="#3B82F6" strokeWidth="3" filter="url(#glow)" />
-                <path d="M0 180 Q 50 140 100 160 T 200 100 T 300 120 T 400 60 T 500 80 T 600 40 T 700 90 T 800 30 V 240 H 0 Z" fill="url(#lg)" />
-                {[[100,160],[300,120],[500,80],[700,90]].map(([cx,cy],i)=>(
-                  <circle key={i} cx={cx} cy={cy} r="5" fill="#3B82F6" />
-                ))}
-              </svg>
-              <div className="absolute bottom-0 left-0 w-full flex justify-between text-[10px] font-bold text-on-surface-variant opacity-80 tracking-widest px-2">
-                {['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG'].map((m)=><span key={m}>{m}</span>)}
-              </div>
-            </div>
+            {loading
+              ? <Skeleton className="flex-1 min-h-[220px]" />
+              : <LineChart data={data?.requestsByMonth} />
+            }
           </div>
         </div>
 
         {/* Row 2 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-          {/* Bar Chart */}
+          {/* Category chart */}
           <div className="lg:col-span-6 glass-panel p-md rounded-xl">
-            <div className="flex items-center justify-between mb-lg">
-              <h3 className="text-label-md text-on-surface">Weekly Request Volume</h3>
-              <span className="material-symbols-outlined text-on-surface-variant cursor-pointer">more_horiz</span>
-            </div>
-            <div className="flex items-end justify-between px-sm" style={{height:'280px'}}>
-              {BARS.map(({day,h,tip,highlight})=>(
-                <div key={day} className="flex flex-col items-center gap-xs flex-1 h-full justify-end">
-                  <div className={`w-full rounded-t-lg transition-all cursor-help group relative ${highlight?'primary-gradient opacity-80 hover:opacity-100':'bg-white/10 hover:bg-primary/20'}`} style={{height:`${h}%`}}>
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface-bright text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{tip}</div>
-                  </div>
-                  <span className="text-[10px] text-on-surface-variant font-medium">{day}</span>
-                </div>
-              ))}
-            </div>
+            <h3 className="text-label-md text-on-surface mb-lg">Requests by Category</h3>
+            {loading
+              ? <Skeleton className="h-48" />
+              : <CategoryChart data={data?.requestsByCategory} />
+            }
           </div>
 
-          {/* Pie Chart */}
+          {/* Status pie */}
           <div className="lg:col-span-6 glass-panel p-md rounded-xl flex flex-col">
             <h3 className="text-label-md text-on-surface mb-lg">Status Distribution</h3>
-            <div className="flex flex-1 items-center gap-lg">
-              <div className="relative w-48 h-48 flex-shrink-0">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" fill="none" r="15.9" stroke="#2d3449" strokeWidth="3" />
-                  <circle cx="18" cy="18" fill="none" r="15.9" stroke="#3B82F6" strokeDasharray="60 100" strokeLinecap="round" strokeWidth="3" className="chart-glow" />
-                  <circle cx="18" cy="18" fill="none" r="15.9" stroke="#8B5CF6" strokeDasharray="25 100" strokeDashoffset="-60" strokeLinecap="round" strokeWidth="3" />
-                  <circle cx="18" cy="18" fill="none" r="15.9" stroke="#4cd7f6" strokeDasharray="15 100" strokeDashoffset="-85" strokeLinecap="round" strokeWidth="3" />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-headline-md font-bold">100%</span>
-                  <span className="text-[10px] text-on-surface-variant">Allocated</span>
-                </div>
-              </div>
-              <div className="flex-1 space-y-md">
-                {[{color:'bg-primary',label:'In Progress',pct:'60%'},{color:'bg-secondary',label:'Review',pct:'25%'},{color:'bg-tertiary',label:'Revision',pct:'15%'}].map(({color,label,pct})=>(
-                  <div key={label} className="flex items-center justify-between">
-                    <div className="flex items-center gap-sm"><div className={`w-2 h-2 rounded-full ${color}`}/><span className="text-label-sm">{label}</span></div>
-                    <span className="text-label-sm">{pct}</span>
-                  </div>
-                ))}
-                <div className="w-full h-[1px] bg-white/5 my-xs" />
-                <button className="w-full py-1.5 border border-white/10 rounded-lg text-xs hover:bg-white/5 transition-colors">View detailed breakdown</button>
-              </div>
-            </div>
+            {loading
+              ? <Skeleton className="h-48" />
+              : <PieChart data={data?.statusDistribution || []} total={data?.kpi?.totalRequests || 0} />
+            }
           </div>
         </div>
 
-        {/* Designer Table */}
+        {/* Designer workload table */}
         <div className="glass-panel rounded-xl overflow-hidden">
-          <div className="p-md border-b border-white/5 flex items-center justify-between">
-            <h3 className="text-label-md text-on-surface">Designer Performance &amp; Workload</h3>
-            <div className="flex items-center gap-sm">
-              <span className="text-xs text-on-surface-variant flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"/>Available</span>
-              <span className="text-xs text-on-surface-variant flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-error"/>Full Capacity</span>
-            </div>
+          <div className="p-md border-b border-white/5">
+            <h3 className="text-label-md text-on-surface">Designer Workload</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="text-on-surface-variant text-label-sm uppercase tracking-wider bg-white/[0.02]">
-                  {['Designer','Active Load','Capacity','Efficiency','Avg. Rating',''].map((h)=>(
+                  {['Designer', 'Active', 'Completed', 'Capacity', ''].map((h) => (
                     <th key={h} className="px-md py-sm font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {DESIGNERS.map((d)=>(
-                  <tr key={d.name} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-md py-md">
-                      <div className="flex items-center gap-sm">
-                        <div className="w-8 h-8 rounded-full border border-white/10 overflow-hidden">
-                          <img src={d.img} alt={d.name} className="w-full h-full object-cover" />
+                {loading
+                  ? [1,2,3].map((i) => (
+                    <tr key={i}>
+                      {[1,2,3,4,5].map((j) => (
+                        <td key={j} className="px-md py-md"><Skeleton className="h-4" /></td>
+                      ))}
+                    </tr>
+                  ))
+                  : (data?.designerWorkload || []).map((d) => (
+                    <tr key={d.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-md py-md">
+                        <div>
+                          <p className="text-label-sm font-medium">{d.name}</p>
+                          <p className="text-[10px] text-on-surface-variant capitalize">{d.role.replace('_', ' ')}</p>
                         </div>
-                        <div><p className="text-label-sm">{d.name}</p><p className="text-[10px] text-on-surface-variant">{d.role}</p></div>
-                      </div>
-                    </td>
-                    <td className="px-md py-md"><span className="text-label-sm">{d.projects} Projects</span></td>
-                    <td className="px-md py-md">
-                      <div className="w-32 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div className={`h-full ${d.barColor}`} style={{width:`${d.capacity}%`}} />
-                      </div>
-                    </td>
-                    <td className={`px-md py-md ${d.effColor}`}>{d.efficiency}</td>
-                    <td className="px-md py-md"><Stars count={d.stars} /></td>
-                    <td className="px-md py-md text-right">
-                      <button className="p-1 hover:bg-white/5 rounded-md transition-colors">
-                        <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-md py-md">
+                        <span className={`text-label-sm font-bold ${d.activeCount > 0 ? 'text-primary' : 'text-on-surface-variant'}`}>
+                          {d.activeCount}
+                        </span>
+                      </td>
+                      <td className="px-md py-md">
+                        <span className="text-label-sm text-green-400">{d.completedCount}</span>
+                      </td>
+                      <td className="px-md py-md">
+                        <div className="flex items-center gap-sm">
+                          <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${d.capacityPct >= 80 ? 'bg-error' : 'primary-gradient'}`}
+                              style={{ width: `${d.capacityPct}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-on-surface-variant">{d.capacityPct}%</span>
+                        </div>
+                      </td>
+                      <td className="px-md py-md text-right">
+                        <span className={`text-[10px] font-bold px-xs py-0.5 rounded-full ${
+                          d.activeCount === 0
+                            ? 'bg-green-500/20 text-green-400'
+                            : d.capacityPct >= 80
+                              ? 'bg-error/20 text-error'
+                              : 'bg-primary/20 text-primary'
+                        }`}>
+                          {d.activeCount === 0 ? 'Available' : d.capacityPct >= 80 ? 'Full' : 'Active'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                }
               </tbody>
             </table>
-          </div>
-          <div className="p-md bg-white/[0.02] flex justify-between items-center">
-            <p className="text-xs text-on-surface-variant">Showing 1-3 of 12 Designers</p>
-            <div className="flex items-center gap-base">
-              <button className="p-1 rounded bg-white/5 border border-white/10 opacity-50"><span className="material-symbols-outlined">chevron_left</span></button>
-              <button className="px-3 py-1 rounded primary-gradient text-white font-bold text-xs">1</button>
-              {[2,3].map((n)=><button key={n} className="px-3 py-1 rounded hover:bg-white/5 text-xs">{n}</button>)}
-              <button className="p-1 rounded bg-white/5 border border-white/10"><span className="material-symbols-outlined">chevron_right</span></button>
-            </div>
           </div>
         </div>
 
