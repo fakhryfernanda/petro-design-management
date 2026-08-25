@@ -64,6 +64,8 @@ export default function RequestDetailClient({ id }) {
   const [statusOpen, setStatusOpen] = useState(false)
   const [savingProgress, setSavingProgress] = useState(false)
   const [progressDraft, setProgressDraft] = useState(null)
+  const [designers, setDesigners] = useState([])
+  const [savingDesigner, setSavingDesigner] = useState(false)
 
   const STATUSES = ['In Progress', 'Review', 'Revision', 'Completed', 'On Hold']
 
@@ -80,6 +82,36 @@ export default function RequestDetailClient({ id }) {
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [id])
+
+  // Fetch available designers untuk dropdown assignment
+  useEffect(() => {
+    fetch('/api/users?role=designer')
+      .then((r) => r.json())
+      .then(setDesigners)
+      .catch(() => setDesigners([]))
+  }, [])
+
+  const handleAssignDesigner = async (designerId) => {
+    const value = designerId ? parseInt(designerId) : null
+    if (value === request.assignedDesignerId) return
+    setSavingDesigner(true)
+    try {
+      const res = await fetch(`/api/requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedDesignerId: value }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setRequest((prev) => ({ ...prev, ...updated }))
+        notify()
+      }
+    } catch (e) {
+      console.error('Assign error:', e)
+    } finally {
+      setSavingDesigner(false)
+    }
+  }
 
   const notify = () => {
     setShowToast(true)
@@ -535,9 +567,21 @@ export default function RequestDetailClient({ id }) {
                   </span>
                 </div>
               ))}
-              <div className="flex justify-between items-center py-sm border-b border-white/5">
-                <span className="text-on-surface-variant opacity-60 text-label-md">Assigned Designer</span>
-                <span className="text-on-surface font-bold text-label-md">{request.assignedDesigner?.name || 'Unassigned'}</span>
+              <div className="flex justify-between items-center gap-xs py-sm border-b border-white/5">
+                <span className="text-on-surface-variant opacity-60 text-label-md flex-shrink-0">Assigned Designer</span>
+                <div className="flex items-center gap-xs">
+                  {savingDesigner && <span className="material-symbols-outlined animate-spin text-[14px] text-on-surface-variant">sync</span>}
+                  <select
+                    value={request.assignedDesignerId || ''}
+                    onChange={(e) => handleAssignDesigner(e.target.value)}
+                    className="bg-transparent border border-white/10 rounded-lg px-xs py-0.5 text-label-sm text-on-surface focus:outline-none focus:border-primary appearance-none"
+                  >
+                    <option value="">Unassigned</option>
+                    {designers.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 

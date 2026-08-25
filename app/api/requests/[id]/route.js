@@ -63,6 +63,15 @@ export async function PATCH(request, { params }) {
   if (typeof body.progress === 'number') {
     data.progress = Math.min(100, Math.max(0, Math.round(body.progress)))
   }
+  if (body.assignedDesignerId !== undefined) {
+    // null → unassign; angka → assign ke user id
+    data.assignedDesignerId = body.assignedDesignerId === null
+      ? null
+      : parseInt(body.assignedDesignerId)
+    if (data.assignedDesignerId !== null && Number.isNaN(data.assignedDesignerId)) {
+      return NextResponse.json({ error: 'Invalid designer id' }, { status: 400 })
+    }
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
