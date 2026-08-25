@@ -135,7 +135,7 @@ export default function ArchiveClient() {
 
   // Fetch designers sekali
   useEffect(() => {
-    fetch('/api/users')
+    fetch('/api/users?role=designer')
       .then((r) => r.json())
       .then(setDesigners)
       .catch(console.error)
