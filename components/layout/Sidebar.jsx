@@ -1,25 +1,49 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
-const NAV_ITEMS = [
-  { icon: 'dashboard',       label: 'Dashboard',       to: '/dashboard' },
-  { icon: 'palette',         label: 'Design Requests', to: '/requests/new' },
-  { icon: 'inventory_2',     label: 'Archive',         to: '/archive' },
-  { icon: 'bar_chart',       label: 'Analytics',       to: '/analytics' },
-  { icon: 'manage_accounts', label: 'Users',            to: null },
-  { icon: 'settings',        label: 'Settings',         to: null },
-]
+const ROLES = {
+  admin: 'Admin',
+  studio_director: 'Studio Director',
+  designer: 'Designer',
+}
 
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [user, setUser] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : Promise.resolve({ user: null })))
+      .then((data) => setUser(data.user))
+      .catch(() => setUser(null))
+  }, [])
+
+  const isAdmin = user && (user.role === 'admin' || user.role === 'studio_director')
+
+  const NAV_ITEMS = [
+    { icon: 'dashboard',       label: 'Dashboard',       to: '/dashboard' },
+    { icon: 'palette',         label: 'Design Requests', to: '/requests/new' },
+    { icon: 'inventory_2',     label: 'Archive',         to: '/archive' },
+    { icon: 'bar_chart',       label: 'Analytics',       to: '/analytics' },
+    ...(isAdmin ? [{ icon: 'manage_accounts', label: 'Users', to: '/users' }] : []),
+    { icon: 'settings',        label: 'Settings',         to: null },
+  ]
 
   const isActive = (to) => {
     if (!to) return false
     if (to === '/dashboard') return pathname === '/dashboard'
     return pathname.startsWith(to)
+  }
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+    router.refresh()
   }
 
   return (
@@ -68,14 +92,34 @@ export default function Sidebar() {
           New Request
         </button>
 
-        <div className="mt-lg flex items-center gap-sm p-sm glass-card rounded-xl">
-          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/30 flex-shrink-0">
-            <span className="material-symbols-outlined text-primary">account_circle</span>
-          </div>
-          <div className="overflow-hidden">
-            <p className="font-label-md text-label-md text-on-surface truncate">Alex Rivera</p>
-            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest truncate">Studio Director</p>
-          </div>
+        <div className="mt-lg relative">
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="w-full flex items-center gap-sm p-sm glass-card rounded-xl text-left transition-colors hover:bg-white/5"
+          >
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/30 flex-shrink-0">
+              <span className="material-symbols-outlined text-primary">account_circle</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-label-md text-label-md text-on-surface truncate">{user?.name || '...'}</p>
+              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest truncate">
+                {user ? (ROLES[user.role] || user.role) : 'Loading'}
+              </p>
+            </div>
+            <span className="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span>
+          </button>
+
+          {menuOpen && (
+            <div className="absolute bottom-full mb-xs left-0 right-0 glass-panel-high rounded-xl overflow-hidden z-50 shadow-xl">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-xs px-md py-sm text-label-md text-error hover:bg-error/10 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">logout</span>
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </aside>

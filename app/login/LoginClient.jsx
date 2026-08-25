@@ -8,6 +8,8 @@ export default function LoginClient() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const glow1Ref = useRef(null)
   const glow2Ref = useRef(null)
 
@@ -22,9 +24,29 @@ export default function LoginClient() {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    router.push('/dashboard')
+    setError('')
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      if (res.ok) {
+        router.push('/dashboard')
+        router.refresh()
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setError(json.error || 'Login failed')
+        setSubmitting(false)
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('Network error. Please try again.')
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -97,10 +119,22 @@ export default function LoginClient() {
                 </div>
 
                 <button type="submit"
-                  className="w-full primary-gradient text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 group mt-2 shadow-lg">
-                  <span>Sign In</span>
-                  <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+                  disabled={submitting}
+                  className="w-full primary-gradient text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 group mt-2 shadow-lg disabled:opacity-60">
+                  {submitting ? (
+                    <><span className="material-symbols-outlined animate-spin text-[18px]">sync</span> Signing in...</>
+                  ) : (<>
+                    <span>Sign In</span>
+                    <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+                  </>)}
                 </button>
+
+                {error && (
+                  <p className="flex items-center gap-xs text-error text-label-sm bg-error/10 border border-error/30 rounded-lg px-sm py-xs">
+                    <span className="material-symbols-outlined text-[16px]">error_outline</span>
+                    {error}
+                  </p>
+                )}
               </form>
 
               <div className="relative flex items-center py-4">
