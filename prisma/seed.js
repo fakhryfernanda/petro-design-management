@@ -8,34 +8,39 @@ async function main() {
   // ── Users ────────────────────────────────────────────────
   const users = await Promise.all([
     prisma.user.upsert({
+      where: { email: 'admin@petro.id' },
+      update: {},
+      create: { name: 'Priya Nair', email: 'admin@petro.id', password: 'password123', role: 'admin' },
+    }),
+    prisma.user.upsert({
       where: { email: 'alex.rivera@petro.id' },
       update: {},
-      create: { name: 'Alex Rivera', email: 'alex.rivera@petro.id', password: 'hashed_pw', role: 'studio_director' },
+      create: { name: 'Alex Rivera', email: 'alex.rivera@petro.id', password: 'password123', role: 'studio_director' },
     }),
     prisma.user.upsert({
       where: { email: 'elena.vance@petro.id' },
       update: {},
-      create: { name: 'Elena Vance', email: 'elena.vance@petro.id', password: 'hashed_pw', role: 'designer' },
+      create: { name: 'Elena Vance', email: 'elena.vance@petro.id', password: 'password123', role: 'designer' },
     }),
     prisma.user.upsert({
       where: { email: 'marcus.thorne@petro.id' },
       update: {},
-      create: { name: 'Marcus Thorne', email: 'marcus.thorne@petro.id', password: 'hashed_pw', role: 'designer' },
+      create: { name: 'Marcus Thorne', email: 'marcus.thorne@petro.id', password: 'password123', role: 'designer' },
     }),
     prisma.user.upsert({
       where: { email: 'sarah.jenkins@petro.id' },
       update: {},
-      create: { name: 'Sarah Jenkins', email: 'sarah.jenkins@petro.id', password: 'hashed_pw', role: 'designer' },
+      create: { name: 'Sarah Jenkins', email: 'sarah.jenkins@petro.id', password: 'password123', role: 'designer' },
     }),
     prisma.user.upsert({
       where: { email: 'jordan.smith@petro.id' },
       update: {},
-      create: { name: 'Jordan Smith', email: 'jordan.smith@petro.id', password: 'hashed_pw', role: 'designer' },
+      create: { name: 'Jordan Smith', email: 'jordan.smith@petro.id', password: 'password123', role: 'designer' },
     }),
   ])
 
-  const [alex, elena, marcus, sarah, jordan] = users
-  console.log(`✅ ${users.length} users created`)
+  const [admin, alex, elena, marcus, sarah, jordan] = users
+  console.log(`✅ ${users.length} users created (password: password123)`)
 
   // ── Tags ─────────────────────────────────────────────────
   const tagNames = [
