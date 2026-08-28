@@ -66,6 +66,7 @@
   --spacing-xl:            64px;
   --spacing-gutter:        24px;
   --spacing-sidebar-width: 280px;
+  --spacing-sidebar-collapsed: 64px;
 
   /* ── Border Radius ── */
   --radius:      0.5rem;

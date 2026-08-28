@@ -54,10 +54,10 @@ export default function DashboardClient() {
   if (loading || !data) {
     return (
       <AppLayout title="Dashboard">
-        <div className="p-lg space-y-lg">
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
-            {[1, 2, 3, 4].map((i) => <SummarySkeleton key={i} />)}
-          </section>
+        <div className="p-md sm:p-lg space-y-lg">
+<section className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+          {[1, 2, 3, 4].map((i) => <SummarySkeleton key={i} />)}
+        </section>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
             <div className="lg:col-span-2 glass-card rounded-xl p-md animate-pulse h-64" />
             <div className="glass-card rounded-xl p-md animate-pulse h-64" />
@@ -86,9 +86,9 @@ export default function DashboardClient() {
 
   return (
     <AppLayout title="Dashboard">
-      <div className="p-lg space-y-lg">
+      <div className="p-md sm:p-lg space-y-lg">
         {/* Summary Cards */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+        <section className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
           {summaryCards.map((c) => (
             <div key={c.label} className="glass-card rounded-xl p-md space-y-sm hover:border-white/20 transition-colors">
               <div className="flex justify-between items-start">
@@ -129,46 +129,47 @@ export default function DashboardClient() {
               <button onClick={() => router.push('/archive')} className="text-primary font-label-sm text-label-sm hover:underline">View All</button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-white/5 bg-white/[0.02]">
-                    {['Project Name', 'Client', 'Status', 'Progress'].map((h) => (
-                      <th key={h} className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {recentRequests.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-md py-lg text-center text-on-surface-variant">No requests yet</td>
-                    </tr>
-                  ) : recentRequests.map((r) => (
-                    <tr key={r.id} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => router.push(`/requests/${r.id}`)}>
-                      <td className="px-md py-sm">
-                        <div className="flex items-center gap-xs">
-                          <div className={`w-2 h-2 rounded-full ${DOT[r.status] || 'bg-outline'}`} />
-                          <span className="font-label-md text-label-md text-on-surface">{r.title}</span>
-                        </div>
-                      </td>
-                      <td className="px-md py-sm text-label-md text-on-surface-variant">{r.client}</td>
-                      <td className="px-md py-sm"><StatusBadge status={r.status} /></td>
-                      <td className="px-md py-sm">
-                        <div className="flex items-center gap-sm">
-                          <ProgressBar value={r.progress} />
-                          <span className="text-[11px] text-on-surface-variant">{r.progress}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+               <table className="w-full text-left">
+                 <thead>
+                   <tr className="border-b border-white/5 bg-white/[0.02]">
+                     <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant">Project Name</th>
+                     <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant hidden sm:table-cell">Client</th>
+                     <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">Status</th>
+                     <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant">Progress</th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-white/5">
+                   {recentRequests.length === 0 ? (
+                     <tr>
+                       <td colSpan={4} className="px-md py-lg text-center text-on-surface-variant">No requests yet</td>
+                     </tr>
+                   ) : recentRequests.map((r) => (
+                     <tr key={r.id} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => router.push(`/requests/${r.id}`)}>
+                       <td className="px-md py-sm max-w-[120px] sm:max-w-none">
+                         <div className="flex items-center gap-xs">
+                           <div className={`w-2 h-2 rounded-full flex-shrink-0 ${DOT[r.status] || 'bg-outline'}`} />
+                           <span className="font-label-md text-label-md text-on-surface truncate">{r.title}</span>
+                         </div>
+                       </td>
+                       <td className="px-md py-sm text-label-md text-on-surface-variant hidden sm:table-cell">{r.client}</td>
+                       <td className="px-md py-sm whitespace-nowrap"><StatusBadge status={r.status} /></td>
+                       <td className="px-md py-sm">
+                         <div className="flex items-center gap-xs min-w-[80px]">
+                           <ProgressBar value={r.progress} className="min-w-[40px]" />
+                           <span className="text-[11px] text-on-surface-variant flex-shrink-0">{r.progress}%</span>
+                         </div>
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
             </div>
           </div>
 
           {/* Pie Chart */}
           <div className="glass-card rounded-xl p-md flex flex-col items-center">
             <h3 className="font-label-md text-label-md text-on-surface w-full mb-lg">Status Summary</h3>
-            <div className="relative w-48 h-48 flex items-center justify-center">
+            <div className="relative w-40 h-40 sm:w-48 sm:h-48 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                 {segments.map((s) => (
                   <path

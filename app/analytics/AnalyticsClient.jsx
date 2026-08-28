@@ -25,8 +25,8 @@ function PieChart({ data, total }) {
     return seg
   })
   return (
-    <div className="flex flex-1 items-center gap-lg">
-      <div className="relative w-44 h-44 flex-shrink-0">
+    <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-md sm:gap-lg">
+      <div className="relative w-36 h-36 sm:w-44 sm:h-44 flex-shrink-0 mx-auto sm:mx-0">
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
           <circle cx="18" cy="18" fill="none" r="15.9" stroke="#2d3449" strokeWidth="3" />
           {segments.map((s) => (
@@ -43,7 +43,7 @@ function PieChart({ data, total }) {
           <span className="text-[10px] text-on-surface-variant">Total</span>
         </div>
       </div>
-      <div className="flex-1 space-y-sm">
+      <div className="w-full sm:flex-1 space-y-sm">
         {data.map((d) => (
           <div key={d.status} className="flex items-center justify-between">
             <div className="flex items-center gap-sm">
@@ -72,8 +72,8 @@ function LineChart({ data }) {
   const areaD = `${pathD} L ${pts[pts.length - 1][0]} ${H} L ${pts[0][0]} ${H} Z`
 
   return (
-    <div className="flex-1 w-full min-h-[220px] relative">
-      <svg className="absolute inset-0 w-full h-full overflow-visible"
+    <div className="flex-1 w-full min-h-[180px] sm:min-h-[220px] relative overflow-hidden">
+      <svg className="absolute inset-0 w-full h-full"
         preserveAspectRatio="xMidYMid meet" viewBox={`0 0 ${W} ${H + 20}`}>
         <defs>
           <linearGradient id="lg-area" x1="0" x2="0" y1="0" y2="1">
@@ -119,7 +119,7 @@ function CategoryChart({ data }) {
     <div className="space-y-sm">
       {data.map((d, i) => (
         <div key={d.category} className="flex items-center gap-sm">
-          <span className="text-label-sm text-on-surface-variant w-36 truncate flex-shrink-0">{d.category}</span>
+          <span className="text-label-sm text-on-surface-variant w-24 sm:w-36 truncate flex-shrink-0">{d.category}</span>
           <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-700 ${COLORS[i] || 'bg-primary/50'}`}
@@ -156,11 +156,11 @@ export default function AnalyticsClient() {
 
   return (
     <AppLayout title="Reports &amp; Analytics">
-      <div className="p-lg space-y-gutter">
+      <div className="p-md sm:p-lg space-y-gutter">
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-          <div className="lg:col-span-4 grid grid-cols-2 gap-sm">
+          <div className="lg:col-span-4 grid grid-cols-2 gap-xs sm:gap-sm">
             {loading
               ? [1,2,3,4].map((i) => <Skeleton key={i} className="h-24" />)
               : KPI_CARDS.map((k) => (
@@ -216,17 +216,19 @@ export default function AnalyticsClient() {
         </div>
 
         {/* Designer workload table */}
-        <div className="glass-panel rounded-xl overflow-hidden">
+        <div className="glass-panel rounded-xl overflow-hidden w-full min-w-0">
           <div className="p-md border-b border-white/5">
             <h3 className="text-label-md text-on-surface">Designer Workload</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[520px]">
               <thead>
                 <tr className="text-on-surface-variant text-label-sm uppercase tracking-wider bg-white/[0.02]">
-                  {['Designer', 'Active', 'Completed', 'Capacity', ''].map((h) => (
-                    <th key={h} className="px-md py-sm font-medium">{h}</th>
-                  ))}
+                  <th className="px-md py-sm font-medium">Designer</th>
+                  <th className="px-md py-sm font-medium">Active</th>
+                  <th className="px-md py-sm font-medium">Completed</th>
+                  <th className="px-md py-sm font-medium">Capacity</th>
+                  <th className="px-md py-sm font-medium"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -254,7 +256,7 @@ export default function AnalyticsClient() {
                       <td className="px-md py-md">
                         <span className="text-label-sm text-green-400">{d.completedCount}</span>
                       </td>
-                      <td className="px-md py-md">
+                      <td className="px-md py-md whitespace-nowrap">
                         <div className="flex items-center gap-sm">
                           <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
                             <div

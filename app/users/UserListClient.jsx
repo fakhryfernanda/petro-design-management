@@ -104,7 +104,7 @@ export default function UserListClient() {
 
   return (
     <AppLayout title="Users">
-      <div className="p-lg space-y-lg">
+      <div className="p-md sm:p-lg space-y-lg">
         <div className="flex items-center justify-between">
           <p className="text-label-md text-on-surface-variant">{users.length} users</p>
           <button onClick={openCreate}
@@ -114,27 +114,31 @@ export default function UserListClient() {
           </button>
         </div>
 
-        <div className="glass-panel rounded-xl overflow-hidden">
+        <div className="glass-panel rounded-xl overflow-hidden w-full min-w-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[560px]">
               <thead>
                 <tr className="text-on-surface-variant text-label-sm uppercase tracking-wider bg-white/[0.02]">
-                  {['User', 'Email', 'Role', 'Active', 'Completed', ''].map((h) => (
-                    <th key={h} className="px-md py-sm font-medium">{h}</th>
-                  ))}
+                  <th className="px-md py-sm font-medium">User</th>
+                  <th className="px-md py-sm font-medium">Email</th>
+                  <th className="px-md py-sm font-medium">Role</th>
+                  <th className="px-md py-sm font-medium">Active</th>
+                  <th className="px-md py-sm font-medium">Completed</th>
+                  <th className="px-md py-sm font-medium"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {loading ? (
                   [1,2,3,4].map((i) => (
                     <tr key={i}>
-                      {[1,2,3,4,5,6].map((j) => (
+                      {[1,2,3].map((j) => (
                         <td key={j} className="px-md py-md"><div className="h-4 bg-white/10 rounded animate-pulse" /></td>
                       ))}
                     </tr>
                   ))
                 ) : users.map((u) => (
                   <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
+                    {/* User cell — shows name + role badge on mobile */}
                     <td className="px-md py-md">
                       <div className="flex items-center gap-sm">
                         <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
@@ -143,8 +147,8 @@ export default function UserListClient() {
                         <span className="text-label-md font-medium text-on-surface">{u.name}</span>
                       </div>
                     </td>
-                    <td className="px-md py-md text-label-sm text-on-surface-variant">{u.email}</td>
-                    <td className="px-md py-md"><RoleBadge role={u.role} /></td>
+                    <td className="px-md py-md text-label-sm text-on-surface-variant max-w-[140px] truncate">{u.email}</td>
+                    <td className="px-md py-md whitespace-nowrap"><RoleBadge role={u.role} /></td>
                     <td className="px-md py-md text-label-sm text-primary font-bold">{u.activeCount}</td>
                     <td className="px-md py-md text-label-sm text-green-400">{u.completedCount}</td>
                     <td className="px-md py-md">

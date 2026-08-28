@@ -77,7 +77,7 @@ export default function LoginClient() {
 
         {/* Right: Form */}
         <div className="flex justify-center">
-          <div className="glass-panel w-full max-w-[480px] p-8 lg:p-12 rounded-[2rem] shadow-2xl">
+          <div className="glass-panel w-full max-w-[480px] p-6 sm:p-8 lg:p-12 rounded-[2rem] shadow-2xl">
             <div className="flex flex-col gap-6">
               <p className="text-on-surface text-headline-md font-black tracking-tighter lg:hidden">PETRO DESIGN</p>
               <div className="flex flex-col gap-2">

@@ -196,7 +196,7 @@ export default function ArchiveClient() {
   // ── Render ──────────────────────────────────────────────────
   return (
     <AppLayout title="Design Archive">
-      <div className="p-lg space-y-lg">
+      <div className="p-md sm:p-lg space-y-lg">
 
         {/* ── Filters ── */}
         <section className="glass-panel p-md rounded-2xl">
@@ -210,7 +210,7 @@ export default function ArchiveClient() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-md">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-md">
             {/* Search */}
             <div className="space-y-xs">
               <label className="text-label-sm text-on-surface-variant ml-1 block">Search</label>
@@ -339,61 +339,77 @@ export default function ArchiveClient() {
 
         {/* ── Pagination ── */}
         {!loading && totalPages > 1 && (
-          <footer className="flex items-center justify-between pt-lg">
+          <footer className="flex items-center justify-center pt-lg gap-xs">
+            {/* Prev */}
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="glass-button px-md py-sm rounded-xl flex items-center gap-xs text-label-md text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
+              className="w-8 h-8 glass-button rounded-lg flex items-center justify-center text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
             >
-              <span className="material-symbols-outlined">chevron_left</span>
-              Previous
+              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
             </button>
 
-            <div className="flex items-center gap-base">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                // Sliding window di sekitar halaman aktif
-                let p
-                if (totalPages <= 5) {
-                  p = i + 1
-                } else if (page <= 3) {
-                  p = i + 1
-                } else if (page >= totalPages - 2) {
-                  p = totalPages - 4 + i
-                } else {
-                  p = page - 2 + i
-                }
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`w-10 h-10 rounded-lg text-label-md flex items-center justify-center transition-colors ${
+            {/* Page numbers — max 3 visible + ellipsis */}
+            {(() => {
+              const items = []
+              // Tentukan window 3 halaman di sekitar page aktif
+              let start, end
+              if (totalPages <= 3) {
+                start = 1; end = totalPages
+              } else if (page <= 2) {
+                start = 1; end = 3
+              } else if (page >= totalPages - 1) {
+                start = totalPages - 2; end = totalPages
+              } else {
+                start = page - 1; end = page + 1
+              }
+
+              // Ellipsis kiri
+              if (start > 1) {
+                items.push(
+                  <button key={1} onClick={() => setPage(1)}
+                    className="w-8 h-8 rounded-lg glass-button text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center text-label-sm">
+                    1
+                  </button>
+                )
+                if (start > 2) items.push(<span key="el" className="text-on-surface-variant/50 text-label-sm px-0.5">…</span>)
+              }
+
+              // Window 3 halaman
+              for (let p = start; p <= end; p++) {
+                items.push(
+                  <button key={p} onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-lg text-label-sm flex items-center justify-center transition-colors ${
                       p === page
                         ? 'primary-gradient text-white font-bold shadow-lg'
                         : 'glass-button text-on-surface-variant hover:text-on-surface'
-                    }`}
-                  >
+                    }`}>
                     {p}
                   </button>
                 )
-              })}
-              {totalPages > 5 && page < totalPages - 2 && (
-                <>
-                  <span className="text-on-surface-variant px-xs">...</span>
-                  <button onClick={() => setPage(totalPages)}
-                    className="w-10 h-10 rounded-lg glass-button text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center">
+              }
+
+              // Ellipsis kanan
+              if (end < totalPages) {
+                if (end < totalPages - 1) items.push(<span key="er" className="text-on-surface-variant/50 text-label-sm px-0.5">…</span>)
+                items.push(
+                  <button key={totalPages} onClick={() => setPage(totalPages)}
+                    className="w-8 h-8 rounded-lg glass-button text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center text-label-sm">
                     {totalPages}
                   </button>
-                </>
-              )}
-            </div>
+                )
+              }
 
+              return items
+            })()}
+
+            {/* Next */}
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="glass-button px-md py-sm rounded-xl flex items-center gap-xs text-label-md text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
+              className="w-8 h-8 glass-button rounded-lg flex items-center justify-center text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
             >
-              Next
-              <span className="material-symbols-outlined">chevron_right</span>
+              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
             </button>
           </footer>
         )}

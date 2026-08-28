@@ -336,7 +336,7 @@ export default function RequestDetailClient({ id }) {
         </div>
       }
     >
-      <div className="px-lg pt-md">
+      <div className="px-md sm:px-lg pt-md">
         <button onClick={() => router.push('/dashboard')}
           className="flex items-center gap-xs text-on-surface-variant hover:text-primary transition-colors text-label-md">
           <span className="material-symbols-outlined">arrow_back</span>
@@ -344,7 +344,7 @@ export default function RequestDetailClient({ id }) {
         </button>
       </div>
 
-      <div className="p-lg grid grid-cols-12 gap-gutter">
+      <div className="p-md sm:p-lg grid grid-cols-12 gap-gutter">
         {/* Left */}
         <div className="col-span-12 lg:col-span-8 space-y-gutter">
           {/* Tags */}
@@ -551,7 +551,7 @@ export default function RequestDetailClient({ id }) {
 
         {/* Right */}
         <div className="col-span-12 lg:col-span-4">
-          <div className="glass-panel-high rounded-xl p-md space-y-md sticky top-24">
+          <div className="glass-panel-high rounded-xl p-md space-y-md lg:sticky lg:top-24">
             <h3 className="text-label-md text-on-surface-variant uppercase tracking-widest mb-sm">Project Info</h3>
             <div className="space-y-sm">
               {[

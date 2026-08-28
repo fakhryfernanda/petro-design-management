@@ -84,7 +84,7 @@ export default function NewRequestClient() {
 
   return (
     <AppLayout title="New Request">
-      <div className="relative z-10 p-lg max-w-5xl mx-auto">
+      <div className="relative z-10 p-md sm:p-lg max-w-5xl mx-auto">
         <div className="absolute top-20 right-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none -z-10" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-secondary/10 rounded-full blur-[100px] pointer-events-none -z-10" />
 
