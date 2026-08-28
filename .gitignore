@@ -17,6 +17,8 @@ dist/
 # Prisma SQLite database
 prisma/dev.db
 prisma/dev.db-journal
+prisma/prisma/dev.db
+prisma/prisma/dev.db-journal
 
 # User uploads (local prototype storage)
 public/uploads/
