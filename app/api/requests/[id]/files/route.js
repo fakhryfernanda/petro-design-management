@@ -1,9 +1,8 @@
 import { prisma } from '../../../../../lib/db'
 import { uploadFile, deleteFile } from '../../../../../lib/storage'
+import { isFileAllowed, isFileTooLarge } from '../../../../../lib/files'
+import { requireApiAuth, ROLES } from '../../../../../lib/auth'
 import { NextResponse } from 'next/server'
-
-const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf', 'image/svg+xml']
-const MAX_SIZE = 50 * 1024 * 1024 // 50MB
 
 export async function POST(request, { params }) {
   try {
@@ -24,11 +23,19 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    const type = formData.get('type') === 'designer' ? 'designer' : 'reference'
+
+    // Designer files hanya untuk super_admin/designer; reference untuk semua role yang login
+    const denied = await requireApiAuth(
+      type === 'designer' ? [ROLES.SUPER_ADMIN, ROLES.DESIGNER] : null
+    )
+    if (denied) return denied
+
+    if (!isFileAllowed(file.type)) {
       return NextResponse.json({ error: `File type not allowed: ${file.type}` }, { status: 400 })
     }
 
-    if (file.size > MAX_SIZE) {
+    if (isFileTooLarge(file.size)) {
       return NextResponse.json({ error: 'File too large (max 50MB)' }, { status: 400 })
     }
 
@@ -47,6 +54,7 @@ export async function POST(request, { params }) {
         url:       stored.url,
         mimeType:  stored.mimeType,
         size:      stored.size,
+        type,
         requestId,
       },
     })
@@ -60,6 +68,10 @@ export async function POST(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    // Hapus attachment: super_admin & designer
+    const denied = await requireApiAuth([ROLES.SUPER_ADMIN, ROLES.DESIGNER])
+    if (denied) return denied
+
     const { id } = await params
     const requestId = parseInt(id)
     const { fileId } = await request.json()
