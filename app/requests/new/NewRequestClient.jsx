@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import AppLayout from '../../../components/layout/AppLayout'
+import { CATEGORIES, getSubCategories1, getSubCategories2 } from '../../../lib/categories'
+import { isFileAllowed, isFileTooLarge } from '../../../lib/files'
 
 const PRIORITIES = [
   { label: 'Low',    borderActive: 'border-tertiary-container',  bgActive: 'bg-tertiary-container/10',  dotActive: 'bg-tertiary' },
@@ -11,70 +13,145 @@ const PRIORITIES = [
   { label: 'Urgent', borderActive: 'border-error',               bgActive: 'bg-error/10',               dotActive: 'bg-error', isError: true },
 ]
 
-const CATEGORIES    = ['UI/UX Design', 'Brand Identity', 'Motion Graphics', 'Marketing Assets', '3D Rendering']
-const PROJECT_TYPES = ['Web Design', 'Mobile Design', 'Branding', 'Marketing', 'Packaging', '3D Design', 'Editorial', 'Asset Library']
+const isImage = (type) => (type || '').startsWith('image/')
+
+function formatSize(bytes) {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 export default function NewRequestClient() {
   const router = useRouter()
 
   // Basic info
   const [title,       setTitle]       = useState('')
-  const [category,    setCategory]    = useState(CATEGORIES[0])
+  const [category,    setCategory]    = useState('')
+  const [subCategory1, setSubCategory1] = useState('')
+  const [subCategory2, setSubCategory2] = useState('')
   const [client,      setClient]      = useState('')
-  const [product,     setProduct]     = useState('')
 
   // Project details
   const [deadline,    setDeadline]    = useState('')
   const [priority,    setPriority]    = useState('Medium')
-  const [projectType, setProjectType] = useState('')
   const [description, setDescription] = useState('')
 
-  // Tags
-  const [allTags,     setAllTags]     = useState([])
-  const [selectedTags, setSelectedTags] = useState([])
+  // Project tags
+  const [tagType, setTagType] = useState('Regular')
+
+  // Attachments
+  const [files, setFiles] = useState([])
+  const fileInputRef = useRef(null)
 
   // UI state
   const [submitting, setSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(null) // {done, total}
   const [error,      setError]      = useState('')
+  const [failedFiles, setFailedFiles] = useState([]) // {name, reason}
 
-  // Fetch available tags on mount
-  useEffect(() => {
-    fetch('/api/tags')
-      .then((r) => r.json())
-      .then(setAllTags)
-      .catch(console.error)
-  }, [])
-
-  const toggleTag = (name) => {
-    setSelectedTags((prev) =>
-      prev.includes(name) ? prev.filter((t) => t !== name) : [...prev, name]
-    )
-  }
+  const sub1Options = category ? getSubCategories1(category) : []
+  const sub2Options = category && subCategory1 ? getSubCategories2(category, subCategory1) : []
 
   const buildPayload = (status) => ({
-    title, category, client, product,
-    deadline, priority, projectType,
-    description, tags: selectedTags, status,
+    title, category, subCategory1, subCategory2, client,
+    deadline, priority,
+    description, tagType, status,
   })
+
+  const handleFileSelect = (e) => {
+    const selected = Array.from(e.target.files || [])
+    e.target.value = ''
+    if (selected.length === 0) return
+
+    const rejected = []
+    const accepted = []
+    for (const f of selected) {
+      if (!isFileAllowed(f.type)) {
+        rejected.push({ name: f.name, reason: 'File type not supported' })
+      } else if (isFileTooLarge(f.size)) {
+        rejected.push({ name: f.name, reason: 'File too large (max 50MB)' })
+      } else {
+        accepted.push(f)
+      }
+    }
+    if (rejected.length > 0) {
+      setFailedFiles((prev) => [...prev, ...rejected])
+    }
+    if (accepted.length === 0) return
+
+    setFiles((prev) => [
+      ...prev,
+      ...accepted.map((f) => ({
+        id: `${f.name}-${f.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
+        file: f,
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        previewUrl: isImage(f.type) ? URL.createObjectURL(f) : null,
+      })),
+    ])
+  }
+
+  const removeFailed = (index) => {
+    setFailedFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const removeFile = (id) => {
+    setFiles((prev) => {
+      const removed = prev.find((f) => f.id === id)
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl)
+      return prev.filter((f) => f.id !== id)
+    })
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setUploadProgress(null)
     setSubmitting(true)
     try {
       const res = await fetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildPayload('In Progress')),
+        body: JSON.stringify(buildPayload('Pending')),
       })
-      if (res.ok) {
-        const created = await res.json()
-        router.push(`/requests/${created.id}`)
-      } else {
+      if (!res.ok) {
         const json = await res.json().catch(() => ({}))
         setError(json.error || 'Something went wrong')
         setSubmitting(false)
+        return
       }
+      const created = await res.json()
+
+      // Upload semua file (opsional) — paralel, dengan progres
+      if (files.length > 0) {
+        let done = 0
+        const total = files.length
+        setUploadProgress({ done: 0, total })
+        const uploads = files.map(async ({ file }) => {
+          const form = new FormData()
+          form.append('file', file)
+          form.append('type', 'reference')
+          const upRes = await fetch(`/api/requests/${created.id}/files`, {
+            method: 'POST',
+            body: form,
+          })
+          done += 1
+          setUploadProgress({ done, total })
+          return upRes.ok
+        })
+        const results = await Promise.all(uploads)
+        if (results.some((ok) => !ok)) {
+          console.error('Some file uploads failed')
+        }
+      }
+      setUploadProgress(null)
+
+      files.forEach((f) => { if (f.previewUrl) URL.revokeObjectURL(f.previewUrl) })
+
+      setSubmitting(false)
+      router.push(`/requests/${created.id}`)
     } catch (e) {
       console.error('Submit error:', e)
       setError('Network error. Please try again.')
@@ -121,21 +198,49 @@ export default function NewRequestClient() {
               </div>
               <div className="space-y-xs">
                 <label className="text-label-md text-on-surface-variant block">Category <span className="text-error">*</span></label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-surface-container-highest border border-white/10 rounded-lg px-md py-sm text-on-surface focus:outline-none focus:border-primary appearance-none">
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                <select
+                  required
+                  value={category}
+                  onChange={(e) => { setCategory(e.target.value); setSubCategory1(''); setSubCategory2('') }}
+                  className="w-full bg-surface-container-highest border border-white/10 rounded-lg px-md py-sm text-on-surface focus:outline-none focus:border-primary appearance-none"
+                >
+                  <option value="">— Select category —</option>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+
+              <div className="space-y-xs">
+                <label className="text-label-md text-on-surface-variant block">Sub-Category 1 <span className="text-error">*</span></label>
+                <select
+                  required
+                  disabled={!category}
+                  value={subCategory1}
+                  onChange={(e) => { setSubCategory1(e.target.value); setSubCategory2('') }}
+                  className="w-full bg-surface-container-highest border border-white/10 rounded-lg px-md py-sm text-on-surface focus:outline-none focus:border-primary appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">{category ? '— Select sub-category —' : 'Select category first'}</option>
+                  {sub1Options.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-xs">
+                <label className="text-label-md text-on-surface-variant block">Sub-Category 2 <span className="text-error">*</span></label>
+                <select
+                  required
+                  disabled={!subCategory1}
+                  value={subCategory2}
+                  onChange={(e) => setSubCategory2(e.target.value)}
+                  className="w-full bg-surface-container-highest border border-white/10 rounded-lg px-md py-sm text-on-surface focus:outline-none focus:border-primary appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">{subCategory1 ? '— Select sub-category —' : 'Select sub-category first'}</option>
+                  {sub2Options.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
               <div className="space-y-xs">
                 <label className="text-label-md text-on-surface-variant block">Client/Company <span className="text-error">*</span></label>
                 <input type="text" required value={client} onChange={(e) => setClient(e.target.value)}
                   placeholder="Client Name"
-                  className="w-full bg-surface-container-highest border border-white/10 rounded-lg px-md py-sm text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all" />
-              </div>
-              <div className="space-y-xs">
-                <label className="text-label-md text-on-surface-variant block">Product/Service</label>
-                <input type="text" value={product} onChange={(e) => setProduct(e.target.value)}
-                  placeholder="Product Name"
                   className="w-full bg-surface-container-highest border border-white/10 rounded-lg px-md py-sm text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all" />
               </div>
             </div>
@@ -153,16 +258,6 @@ export default function NewRequestClient() {
                 <label className="text-label-md text-on-surface-variant block">Project Deadline</label>
                 <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)}
                   className="w-full bg-surface-container-highest border border-white/10 rounded-lg px-md py-sm text-on-surface focus:outline-none focus:border-primary appearance-none" />
-              </div>
-
-              {/* Project Type */}
-              <div className="space-y-xs">
-                <label className="text-label-md text-on-surface-variant block">Project Type</label>
-                <select value={projectType} onChange={(e) => setProjectType(e.target.value)}
-                  className="w-full bg-surface-container-highest border border-white/10 rounded-lg px-md py-sm text-on-surface focus:outline-none focus:border-primary appearance-none">
-                  <option value="">— Select type —</option>
-                  {PROJECT_TYPES.map((t) => <option key={t}>{t}</option>)}
-                </select>
               </div>
 
               {/* Priority */}
@@ -200,41 +295,101 @@ export default function NewRequestClient() {
               <h3 className="text-headline-md text-on-surface">Tags &amp; Attachments</h3>
             </div>
 
-            {/* Tags */}
+            {/* Tag Type */}
             <div className="space-y-xs mb-lg">
-              <label className="text-label-md text-on-surface-variant block">Project Tags</label>
-              <div className="flex flex-wrap gap-xs">
-                {allTags.map((tag) => {
-                  const active = selectedTags.includes(tag.name)
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleTag(tag.name)}
-                      className={`px-sm py-1 rounded-lg text-[12px] border transition-all ${
-                        active
-                          ? 'bg-primary/20 border-primary text-primary'
-                          : 'bg-white/5 border-white/10 text-on-surface-variant hover:border-primary/40'
-                      }`}
-                    >
-                      {active && <span className="material-symbols-outlined text-[12px] mr-0.5 align-middle">check</span>}
-                      {tag.name}
-                    </button>
-                  )
-                })}
+              <label className="text-label-md text-on-surface-variant block">Project Tags <span className="text-error">*</span></label>
+              <div className="grid grid-cols-2 gap-xs">
+                {['Regular', 'Custom'].map((t) => (
+                  <label key={t} className="cursor-pointer">
+                    <input type="radio" name="tagType" value={t} checked={tagType === t} onChange={() => setTagType(t)} className="hidden" />
+                    <div className={`flex items-center justify-center gap-xs p-sm rounded-lg border transition-all ${
+                      tagType === t
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-white/10 bg-white/5 text-on-surface-variant'
+                    }`}>
+                      <span className="material-symbols-outlined text-[18px]">{t === 'Regular' ? 'category' : 'brush'}</span>
+                      <span className="text-label-md">{t}</span>
+                    </div>
+                  </label>
+                ))}
               </div>
-              {selectedTags.length > 0 && (
-                <p className="text-[11px] text-on-surface-variant/60">{selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} selected</p>
-              )}
             </div>
 
             {/* File upload */}
-            {/* File upload — available after submit */}
-            <div className="flex items-start gap-sm p-md rounded-xl bg-white/[0.02] border border-white/5">
-              <span className="material-symbols-outlined text-on-surface-variant/50 mt-0.5">info</span>
-              <p className="text-label-md text-on-surface-variant/70">
-                Reference files can be uploaded from the project detail page after the request is created.
-              </p>
+            <div className="space-y-xs">
+              <label className="text-label-md text-on-surface-variant block">Attachments</label>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-md py-lg text-center cursor-pointer hover:border-primary/40 transition-colors group"
+              >
+                <span className="material-symbols-outlined text-on-surface-variant/40 mb-xs group-hover:text-primary/50 transition-colors text-[28px]">upload_file</span>
+                <span className="text-label-md text-on-surface-variant group-hover:text-on-surface transition-colors">Click to attach files</span>
+                <span className="text-[11px] text-on-surface-variant/50 mt-xs">Images, PDF, DOC, XLS, PPT, ZIP — max 50MB per file</span>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+
+              {failedFiles.length > 0 && (
+                <div className="space-y-sm">
+                  {failedFiles.map((ff, i) => (
+                    <div
+                      key={`${ff.name}-${i}`}
+                      className="flex items-center gap-sm px-sm py-xs rounded-lg bg-error/5 border border-error/30"
+                    >
+                      <span className="material-symbols-outlined text-error text-[20px] flex-shrink-0">error</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-label-md text-error truncate">{ff.name}</p>
+                        <p className="text-[11px] text-error/70">{ff.reason}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFailed(i)}
+                        className="p-xs rounded-lg text-error/70 hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
+                        aria-label={`Dismiss ${ff.name}`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {files.length > 0 && (
+                <div className="space-y-sm">
+                  {files.map((f) => (
+                    <div
+                      key={f.id}
+                      className="flex items-center gap-sm px-sm py-xs rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/15 transition-colors"
+                    >
+                      {f.previewUrl ? (
+                        <img src={f.previewUrl} alt={f.name} className="w-10 h-10 rounded object-cover flex-shrink-0 border border-white/10" />
+                      ) : (
+                        <div className="w-10 h-10 rounded flex items-center justify-center bg-primary/10 text-primary flex-shrink-0">
+                          <span className="material-symbols-outlined text-[20px]">description</span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-label-md text-on-surface truncate">{f.name}</p>
+                        <p className="text-[11px] text-on-surface-variant/60">{formatSize(f.size)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(f.id)}
+                        className="p-xs rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
+                        aria-label={`Remove ${f.name}`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 
@@ -249,7 +404,11 @@ export default function NewRequestClient() {
               <button type="submit" disabled={submitting}
                 className="gradient-primary px-xl py-sm rounded-lg text-label-md text-white shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center gap-xs">
                 {submitting ? (
-                  <><span className="material-symbols-outlined animate-spin text-[18px]">sync</span> Creating...</>
+                  <><span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
+                    {uploadProgress
+                      ? `Uploading ${uploadProgress.done}/${uploadProgress.total}...`
+                      : 'Creating...'}
+                  </>
                 ) : 'Submit Request'}
               </button>
             </div>
