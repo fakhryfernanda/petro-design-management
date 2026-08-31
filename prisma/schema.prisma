@@ -12,7 +12,7 @@ model User {
   name      String
   email     String   @unique
   password  String
-  role      String   @default("designer") // designer, admin, studio_director
+  role      String   @default("designer") // super_admin, admin, designer
   avatar    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -20,23 +20,32 @@ model User {
   assignedRequests DesignRequest[] @relation("AssignedDesigner")
   createdRequests  DesignRequest[] @relation("RequestCreator")
   comments         Comment[]
+  statusLogs       StatusLog[]
 }
 
 model DesignRequest {
   id          Int       @id @default(autoincrement())
   title       String
   category    String
+  subCategory1 String?
+  subCategory2 String?
+  tagType     String    @default("Regular") // Regular, Custom
   client      String
   product     String?
   deadline    DateTime?
   priority    String    @default("Medium") // Low, Medium, High, Urgent
-  status      String    @default("In Progress") // In Progress, Review, Revision, Completed, On Hold
+  status      String    @default("Pending") // Pending, In Progress, Accepted, On Revision, Completed
   description String?
-  progress    Int       @default(0)
   budget      Float?
   projectType String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  // Status timeline (di-set otomatis saat status berubah)
+  startedAt     DateTime?
+  acceptedAt    DateTime?
+  onRevisionAt  DateTime?
+  completedAt   DateTime?
 
   assignedDesignerId Int?
   assignedDesigner   User? @relation("AssignedDesigner", fields: [assignedDesignerId], references: [id])
@@ -44,9 +53,22 @@ model DesignRequest {
   createdById Int?
   createdBy   User? @relation("RequestCreator", fields: [createdById], references: [id])
 
-  comments Comment[]
-  files    File[]
-  tags     RequestTag[]
+  comments   Comment[]
+  files      File[]
+  statusLogs StatusLog[]
+}
+
+model StatusLog {
+  id        Int      @id @default(autoincrement())
+  from      String
+  to        String
+  createdAt DateTime @default(now())
+
+  requestId Int
+  request   DesignRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  changedById Int?
+  changedBy   User? @relation(fields: [changedById], references: [id])
 }
 
 model Comment {
@@ -68,25 +90,9 @@ model File {
   url       String
   mimeType  String?
   size      Int?
+  type      String   @default("reference") // reference | designer
   createdAt DateTime @default(now())
 
   requestId Int
   request   DesignRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-}
-
-model Tag {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-
-  requests RequestTag[]
-}
-
-model RequestTag {
-  requestId Int
-  tagId     Int
-
-  request DesignRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  tag     Tag           @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([requestId, tagId])
 }

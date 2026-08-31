@@ -1,5 +1,6 @@
 import { prisma } from '../../../../lib/db'
 import { NextResponse } from 'next/server'
+import { requireApiAuth, ROLES } from '../../../../lib/auth'
 
 export async function GET(request, { params }) {
   const { id } = await params
@@ -18,11 +19,11 @@ export async function GET(request, { params }) {
       createdBy: {
         select: { id: true, name: true },
       },
-      tags: {
-        include: { tag: { select: { name: true } } },
-      },
       files: {
         orderBy: { createdAt: 'asc' },
+      },
+      statusLogs: {
+        orderBy: { createdAt: 'desc' },
       },
     },
   })
@@ -31,16 +32,14 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  // Flatten tags
-  const formatted = {
-    ...req,
-    tags: req.tags.map((rt) => rt.tag.name),
-  }
-
-  return NextResponse.json(formatted)
+  return NextResponse.json(req)
 }
 
 export async function PATCH(request, { params }) {
+  // Designer & super admin bisa edit request
+  const denied = await requireApiAuth([ROLES.SUPER_ADMIN, ROLES.DESIGNER])
+  if (denied) return denied
+
   const { id } = await params
   const parsedId = parseInt(id)
 
@@ -50,18 +49,34 @@ export async function PATCH(request, { params }) {
 
   const body = await request.json()
 
-  const VALID_STATUSES = ['In Progress', 'Review', 'Revision', 'Completed', 'On Hold']
+  const VALID_STATUSES = ['Pending', 'In Progress', 'Accepted', 'On Revision', 'Completed']
+  const VALID_PRIORITIES = ['Low', 'Medium', 'High', 'Urgent']
+
+  // Ambil status saat ini — untuk timeline milestones
+  const current = await prisma.designRequest.findUnique({
+    where: { id: parsedId },
+    select: { status: true },
+  })
+
+  if (!current) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
 
   const data = {}
   if (typeof body.description === 'string') data.description = body.description
+  if (typeof body.priority === 'string' && VALID_PRIORITIES.includes(body.priority)) {
+    data.priority = body.priority
+  }
   if (typeof body.status === 'string' && VALID_STATUSES.includes(body.status)) {
     data.status = body.status
-    // Semi-auto progress
-    if (body.status === 'Completed') data.progress = 100
-    if (body.status === 'Review' && (body.currentProgress ?? 100) < 90) data.progress = 90
-  }
-  if (typeof body.progress === 'number') {
-    data.progress = Math.min(100, Math.max(0, Math.round(body.progress)))
+    // Timeline milestones — hanya set forward dari status lama ke baru
+    const now = new Date()
+    if (body.status !== current.status) {
+      if (body.status === 'In Progress') data.startedAt = now
+      if (body.status === 'Accepted')   data.acceptedAt = now
+      if (body.status === 'On Revision') data.onRevisionAt = now
+      if (body.status === 'Completed')  data.completedAt = now
+    }
   }
   if (body.assignedDesignerId !== undefined) {
     // null → unassign; angka → assign ke user id
@@ -78,10 +93,35 @@ export async function PATCH(request, { params }) {
   }
 
   try {
-    const updated = await prisma.designRequest.update({
+    await prisma.designRequest.update({
       where: { id: parsedId },
       data,
     })
+
+    // Catat riwayat status jika status berubah
+    if (data.status && data.status !== current.status) {
+      await prisma.statusLog.create({
+        data: {
+          from: current.status,
+          to: data.status,
+          requestId: parsedId,
+        },
+      })
+    }
+
+    // Ambil ulang dengan log terbaru
+    const updated = await prisma.designRequest.findUnique({
+      where: { id: parsedId },
+      include: {
+        assignedDesigner: {
+          select: { id: true, name: true, avatar: true },
+        },
+        statusLogs: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    })
+
     return NextResponse.json(updated)
   } catch (e) {
     if (e.code === 'P2025') {

@@ -13,7 +13,7 @@ export async function GET() {
     prisma.designRequest.count({ where: { status: 'Completed' } }),
     prisma.user.count({ where: { role: 'designer' } }),
     prisma.designRequest.findMany({
-      select: { status: true, category: true, createdAt: true },
+      select: { status: true, category: true, subCategory2: true, createdAt: true },
     }),
     prisma.user.findMany({
       where: { role: 'designer' },
@@ -67,10 +67,11 @@ export async function GET() {
     count: monthMap[m],
   }))
 
-  // ── Requests by category ──────────────────────────────────
+  // ── Requests by sub-category (level 3) ────────────────────
   const catMap = {}
   allRequests.forEach((r) => {
-    catMap[r.category] = (catMap[r.category] || 0) + 1
+    const key = r.subCategory2 || r.category
+    catMap[key] = (catMap[key] || 0) + 1
   })
   const requestsByCategory = Object.entries(catMap)
     .map(([category, count]) => ({ category, count }))

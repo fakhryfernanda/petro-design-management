@@ -6,10 +6,10 @@ import AppLayout from '../../components/layout/AppLayout'
 // ── Helpers ───────────────────────────────────────────────────
 const STATUS_COLOR = {
   'Completed':   '#22c55e',
+  'Pending':     '#8c909f',
   'In Progress': '#3B82F6',
-  'Review':      '#4cd7f6',
-  'Revision':    '#8B5CF6',
-  'On Hold':     '#8c909f',
+  'Accepted':    '#4cd7f6',
+  'On Revision': '#8B5CF6',
 }
 
 function Skeleton({ className = '' }) {
@@ -198,7 +198,7 @@ export default function AnalyticsClient() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
           {/* Category chart */}
           <div className="lg:col-span-6 glass-panel p-md rounded-xl">
-            <h3 className="text-label-md text-on-surface mb-lg">Requests by Category</h3>
+            <h3 className="text-label-md text-on-surface mb-lg">Requests by Sub-Category</h3>
             {loading
               ? <Skeleton className="h-48" />
               : <CategoryChart data={data?.requestsByCategory} />
@@ -212,77 +212,6 @@ export default function AnalyticsClient() {
               ? <Skeleton className="h-48" />
               : <PieChart data={data?.statusDistribution || []} total={data?.kpi?.totalRequests || 0} />
             }
-          </div>
-        </div>
-
-        {/* Designer workload table */}
-        <div className="glass-panel rounded-xl overflow-hidden w-full min-w-0">
-          <div className="p-md border-b border-white/5">
-            <h3 className="text-label-md text-on-surface">Designer Workload</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[520px]">
-              <thead>
-                <tr className="text-on-surface-variant text-label-sm uppercase tracking-wider bg-white/[0.02]">
-                  <th className="px-md py-sm font-medium">Designer</th>
-                  <th className="px-md py-sm font-medium">Active</th>
-                  <th className="px-md py-sm font-medium">Completed</th>
-                  <th className="px-md py-sm font-medium">Capacity</th>
-                  <th className="px-md py-sm font-medium"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {loading
-                  ? [1,2,3].map((i) => (
-                    <tr key={i}>
-                      {[1,2,3,4,5].map((j) => (
-                        <td key={j} className="px-md py-md"><Skeleton className="h-4" /></td>
-                      ))}
-                    </tr>
-                  ))
-                  : (data?.designerWorkload || []).map((d) => (
-                    <tr key={d.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-md py-md">
-                        <div>
-                          <p className="text-label-sm font-medium">{d.name}</p>
-                          <p className="text-[10px] text-on-surface-variant capitalize">{d.role.replace('_', ' ')}</p>
-                        </div>
-                      </td>
-                      <td className="px-md py-md">
-                        <span className={`text-label-sm font-bold ${d.activeCount > 0 ? 'text-primary' : 'text-on-surface-variant'}`}>
-                          {d.activeCount}
-                        </span>
-                      </td>
-                      <td className="px-md py-md">
-                        <span className="text-label-sm text-green-400">{d.completedCount}</span>
-                      </td>
-                      <td className="px-md py-md whitespace-nowrap">
-                        <div className="flex items-center gap-sm">
-                          <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${d.capacityPct >= 80 ? 'bg-error' : 'primary-gradient'}`}
-                              style={{ width: `${d.capacityPct}%` }}
-                            />
-                          </div>
-                          <span className="text-[11px] text-on-surface-variant">{d.capacityPct}%</span>
-                        </div>
-                      </td>
-                      <td className="px-md py-md text-right">
-                        <span className={`text-[10px] font-bold px-xs py-0.5 rounded-full ${
-                          d.activeCount === 0
-                            ? 'bg-green-500/20 text-green-400'
-                            : d.capacityPct >= 80
-                              ? 'bg-error/20 text-error'
-                              : 'bg-primary/20 text-primary'
-                        }`}>
-                          {d.activeCount === 0 ? 'Available' : d.capacityPct >= 80 ? 'Full' : 'Active'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
           </div>
         </div>
 

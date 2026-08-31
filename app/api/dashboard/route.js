@@ -2,17 +2,17 @@ import { prisma } from '../../../lib/db'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  // Status yang dianggap "aktif" (bukan completed)
-  const ACTIVE_STATUSES = ['In Progress', 'Review', 'Revision', 'On Hold']
-
   const [
     totalRequests,
+    pendingCount,
     completedCount,
     activeDesigners,
     recentRequests,
-    statusCounts,
+    designerWorkloadRaw,
   ] = await Promise.all([
     prisma.designRequest.count(),
+
+    prisma.designRequest.count({ where: { status: 'Pending' } }),
 
     prisma.designRequest.count({ where: { status: 'Completed' } }),
 
@@ -26,46 +26,54 @@ export async function GET() {
         title: true,
         client: true,
         status: true,
-        progress: true,
+        assignedDesigner: {
+          select: { id: true, name: true, avatar: true },
+        },
       },
     }),
 
-    prisma.designRequest.groupBy({
-      by: ['status'],
-      _count: true,
+    prisma.user.findMany({
+      where: { role: 'designer' },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        assignedRequests: {
+          select: { status: true },
+        },
+      },
     }),
   ])
 
-  // pending = semua yang belum completed
-  const pendingCount = totalRequests - completedCount
+  // "Active" = sisa status selain Pending dan Completed
+  const activeCount = totalRequests - pendingCount - completedCount
 
-  // Map statusCounts ke object { status: count }
-  const byStatus = {}
-  for (const s of statusCounts) {
-    byStatus[s.status] = s._count
-  }
-
-  // Distribusi untuk pie chart — hanya status aktif
-  const activeTotal = ACTIVE_STATUSES.reduce((sum, s) => sum + (byStatus[s] || 0), 0)
-
-  const statusDistribution = ACTIVE_STATUSES
-    .map((status) => ({
-      status,
-      count: byStatus[status] || 0,
-      pct: activeTotal > 0 ? Math.round(((byStatus[status] || 0) / activeTotal) * 100) : 0,
-    }))
-    .filter((d) => d.count > 0)
+  // ── Designer workload ─────────────────────────────────────
+  const designerWorkload = designerWorkloadRaw.map((d) => {
+    const pending   = d.assignedRequests.filter((r) => r.status === 'Pending').length
+    const active    = d.assignedRequests.filter((r) => r.status !== 'Pending' && r.status !== 'Completed').length
+    const completed = d.assignedRequests.filter((r) => r.status === 'Completed').length
+    return {
+      id: d.id,
+      name: d.name,
+      role: d.role,
+      pendingCount: pending,
+      activeCount: active,
+      completedCount: completed,
+      totalCount: d.assignedRequests.length,
+    }
+  }).sort((a, b) => b.activeCount - a.activeCount)
 
   return NextResponse.json({
     stats: {
       totalRequests,
       pending: pendingCount,
+      active: activeCount,
       completed: completedCount,
       activeDesigners,
       completedPct: totalRequests > 0 ? Math.round((completedCount / totalRequests) * 100) : 0,
     },
     recentRequests,
-    statusDistribution,
-    activeTotal,
+    designerWorkload,
   })
 }
