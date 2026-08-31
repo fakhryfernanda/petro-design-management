@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 const ROLES = {
+  super_admin: 'Super Admin',
   admin: 'Admin',
-  studio_director: 'Studio Director',
   designer: 'Designer',
 }
 
@@ -47,9 +47,9 @@ export default function AccountMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-xs glass-panel-high rounded-xl shadow-2xl z-50 min-w-[180px] overflow-hidden">
+        <div className="absolute right-0 top-full mt-xs bg-surface-container-high border border-white/15 rounded-xl shadow-2xl z-50 min-w-[180px] overflow-hidden">
           {user && (
-            <div className="px-md py-sm border-b border-white/5">
+            <div className="px-md py-sm border-b border-white/10">
               <p className="text-label-md text-on-surface font-medium truncate">{user.name}</p>
               <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">
                 {ROLES[user.role] || user.role}

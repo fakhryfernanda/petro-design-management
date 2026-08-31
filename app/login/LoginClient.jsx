@@ -1,10 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function LoginClient() {
-  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,8 +33,8 @@ export default function LoginClient() {
         body: JSON.stringify({ email, password }),
       })
       if (res.ok) {
-        router.push('/dashboard')
-        router.refresh()
+        // Hard navigation agar cookie session terkirim & halaman dimuat penuh
+        window.location.href = '/dashboard'
       } else {
         const json = await res.json().catch(() => ({}))
         setError(json.error || 'Login failed')

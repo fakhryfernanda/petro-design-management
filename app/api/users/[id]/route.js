@@ -1,9 +1,14 @@
 import { prisma } from '../../../../lib/db'
 import { NextResponse } from 'next/server'
+import { requireApiAuth, ROLES } from '../../../../lib/auth'
 
-const allowedRoles = ['designer', 'admin', 'studio_director']
+const allowedRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.DESIGNER]
 
 export async function PATCH(request, { params }) {
+  // Hanya super admin yang bisa edit user
+  const denied = await requireApiAuth([ROLES.SUPER_ADMIN])
+  if (denied) return denied
+
   const { id } = await params
   const parsedId = parseInt(id)
   if (Number.isNaN(parsedId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
@@ -39,6 +44,10 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  // Hanya super admin yang bisa hapus user
+  const denied = await requireApiAuth([ROLES.SUPER_ADMIN])
+  if (denied) return denied
+
   const { id } = await params
   const parsedId = parseInt(id)
   if (Number.isNaN(parsedId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })

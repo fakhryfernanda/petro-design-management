@@ -6,8 +6,10 @@ const COOKIE_NAME = 'petro_session'
 
 // Route yang butuh login
 const PROTECTED = ['/dashboard', '/requests', '/archive', '/analytics', '/users']
-// Route yang khusus admin/director
-const ADMIN_ROUTES = ['/users']
+// Route yang khusus super admin
+const SUPER_ADMIN_ROUTES = ['/users']
+// Route yang khusus admin/super admin (create request)
+const CREATE_ROUTES = ['/requests/new']
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl
@@ -37,9 +39,16 @@ export async function middleware(request) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Login tapi bukan admin/director, akses admin route → redirect dashboard
-  if (session && ADMIN_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
-    if (!['admin', 'studio_director'].includes(session.role)) {
+  // Login tapi bukan super admin, akses super admin route → redirect dashboard
+  if (session && SUPER_ADMIN_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
+    if (session.role !== 'super_admin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+  }
+
+  // Login tapi bukan admin/super admin, akses create route → redirect dashboard
+  if (session && CREATE_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
+    if (!['admin', 'super_admin'].includes(session.role)) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }

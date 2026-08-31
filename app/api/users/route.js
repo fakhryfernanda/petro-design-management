@@ -1,7 +1,12 @@
 import { prisma } from '../../../lib/db'
 import { NextResponse } from 'next/server'
+import { requireApiAuth, ROLES } from '../../../lib/auth'
 
 export async function GET(request) {
+  // Semua role yang login boleh baca (dipakai dropdown designer, dll)
+  const denied = await requireApiAuth()
+  if (denied) return denied
+
   const { searchParams } = new URL(request.url)
   const role = searchParams.get('role') || ''
 
@@ -34,6 +39,10 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  // Hanya super admin yang bisa tambah user
+  const denied = await requireApiAuth([ROLES.SUPER_ADMIN])
+  if (denied) return denied
+
   const body = await request.json()
   const name = body.name?.trim()
   const email = body.email?.trim().toLowerCase()
@@ -44,7 +53,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 })
   }
 
-  const allowedRoles = ['designer', 'admin', 'studio_director']
+  const allowedRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.DESIGNER]
   if (!allowedRoles.includes(role)) {
     return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
   }

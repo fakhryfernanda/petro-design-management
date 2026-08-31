@@ -6,14 +6,24 @@ import AppLayout from '../../../components/layout/AppLayout'
 
 // ── Status style map ──────────────────────────────────────────
 const STATUS_STYLE = {
-  'Completed':   'bg-gradient-to-r from-green-500 to-emerald-400 text-white border-transparent',
-  'In Progress': 'status-in-progress',
-  'Review':      'border border-tertiary text-tertiary bg-tertiary/10',
-  'Revision':    'border border-secondary text-secondary bg-secondary/10',
-  'On Hold':     'border border-outline text-outline bg-outline/10',
+  'Completed':   'bg-gradient-to-r from-green-500 to-emerald-400 text-white border-transparent shadow-sm',
+  'Pending':     'bg-white/10 text-on-surface-variant border border-white/20 shadow-sm',
+  'In Progress': 'bg-primary/20 text-primary border border-primary/50 shadow-sm',
+  'Accepted':    'bg-tertiary/20 text-tertiary border border-tertiary/50 shadow-sm',
+  'On Revision': 'bg-secondary/20 text-secondary border border-secondary/50 shadow-sm',
 }
 
-const getStatusStyle = (s) => STATUS_STYLE[s] ?? STATUS_STYLE['On Hold']
+const getStatusStyle = (s) => STATUS_STYLE[s] ?? STATUS_STYLE['Pending']
+
+// ── Priority style map ────────────────────────────────────────
+const PRIORITY_STYLE = {
+  'Low':    'bg-tertiary/20 text-tertiary border border-tertiary/50',
+  'Medium': 'bg-primary/20 text-primary border border-primary/50',
+  'High':   'bg-secondary/20 text-secondary border border-secondary/50',
+  'Urgent': 'bg-error/20 text-error border border-error/50',
+}
+
+const getPriorityStyle = (p) => PRIORITY_STYLE[p] ?? PRIORITY_STYLE['Medium']
 
 // ── Format helpers ────────────────────────────────────────────
 function formatDate(dateStr) {
@@ -26,6 +36,24 @@ function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
   })
+}
+
+// Ikon per ekstensi dokumen
+function docIcon(name = '', mimeType = '') {
+  const ext = (name.split('.').pop() || '').toLowerCase()
+  if (ext === 'pdf' || mimeType === 'application/pdf') return 'picture_as_pdf'
+  if (['doc', 'docx'].includes(ext)) return 'description'
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'table_chart'
+  if (['ppt', 'pptx'].includes(ext)) return 'slideshow'
+  if (['zip'].includes(ext)) return 'folder_zip'
+  return 'description'
+}
+
+function formatSize(bytes) {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 // ── Skeleton ──────────────────────────────────────────────────
@@ -49,6 +77,146 @@ function DetailSkeleton() {
   )
 }
 
+// ── File card (Reference / Designer) ─────────────────────────
+function FileCard({
+  title,
+  type,
+  files,
+  images,
+  documents,
+  uploading,
+  uploadError,
+  onUpload,
+  onOpenLightbox,
+  canUpload,
+  alwaysShowImages = false,
+}) {
+  const inputRef = useRef(null)
+
+  return (
+    <section className="glass-panel rounded-xl p-md">
+      <div className="flex items-center justify-between mb-md">
+        <h3 className="text-headline-md text-on-surface">
+          {title}
+          <span className="text-on-surface-variant/60 ml-xs">({files.length})</span>
+        </h3>
+        {canUpload && (
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-xs text-label-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+          >
+            {uploading
+              ? <><span className="material-symbols-outlined animate-spin text-[16px]">sync</span> Uploading...</>
+              : <><span className="material-symbols-outlined text-[16px]">upload</span> Upload</>
+            }
+          </button>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+          className="hidden"
+          onChange={(e) => onUpload(e, type)}
+        />
+      </div>
+
+      {uploadError && (
+        <div className="flex items-center gap-sm px-sm py-xs rounded-lg bg-error/5 border border-error/30 mb-md">
+          <span className="material-symbols-outlined text-error text-[18px] flex-shrink-0">error</span>
+          <p className="text-label-md text-error flex-1">{uploadError}</p>
+        </div>
+      )}
+
+      {files.length === 0 && (
+        <div
+          onClick={() => canUpload && inputRef.current?.click()}
+          className={`flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm py-lg text-center ${canUpload ? 'cursor-pointer hover:border-primary/40 transition-colors group' : ''}`}
+        >
+          <span className="material-symbols-outlined text-on-surface-variant/40 mb-xs group-hover:text-primary/50 transition-colors">upload_file</span>
+          <span className="text-[12px] text-on-surface-variant/60 group-hover:text-on-surface-variant transition-colors">
+            {canUpload ? 'Click to upload a file' : 'No files yet'}
+          </span>
+        </div>
+      )}
+
+      {(images.length > 0 || alwaysShowImages) && (
+        <div>
+          <p className="text-[11px] text-on-surface-variant/50 uppercase tracking-widest mb-xs">Images</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-sm">
+            {images.map((file, i) => (
+              <div
+                key={file.id}
+                className="group relative aspect-video rounded-lg overflow-hidden glass-panel border border-white/10 cursor-pointer"
+              >
+                <img
+                  src={file.url}
+                  alt={file.name}
+                  onClick={() => onOpenLightbox(type, i)}
+                  className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+            ))}
+            {canUpload && (
+              <div
+                onClick={() => inputRef.current?.click()}
+                className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm hover:border-primary/50 transition-colors cursor-pointer group aspect-video"
+              >
+                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary mb-xs">add_photo_alternate</span>
+                <span className="text-[10px] font-bold text-on-surface-variant group-hover:text-primary uppercase tracking-tighter">Add Image</span>
+              </div>
+            )}
+            {!canUpload && images.length === 0 && (
+              <div className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm aspect-video">
+                <span className="material-symbols-outlined text-on-surface-variant/40 mb-xs">image</span>
+                <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-tighter">No Image</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {documents.length > 0 && (
+        <div>
+          <p className="text-[11px] text-on-surface-variant/50 uppercase tracking-widest mb-xs">Documents</p>
+          <div className="space-y-xs">
+            {documents.map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center gap-sm px-sm py-xs rounded-lg glass-card hover:border-white/20 hover:bg-white/5 transition-all group"
+              >
+                <a
+                  href={file.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-sm flex-1 min-w-0"
+                >
+                  <span className="material-symbols-outlined text-primary text-[24px] flex-shrink-0">{docIcon(file.name, file.mimeType)}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-label-md text-on-surface truncate">{file.name}</p>
+                    {file.size && <p className="text-[11px] text-on-surface-variant/60">{formatSize(file.size)}</p>}
+                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-[18px] flex-shrink-0">open_in_new</span>
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {files.length > 0 && images.length === 0 && canUpload && (
+        <button
+          onClick={() => inputRef.current?.click()}
+          className="flex items-center gap-xs text-label-sm text-on-surface-variant hover:text-primary transition-colors mt-md"
+        >
+          <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
+          Add image
+        </button>
+      )}
+    </section>
+  )
+}
+
 export default function RequestDetailClient({ id }) {
   const router = useRouter()
   const [request, setRequest] = useState(null)
@@ -59,15 +227,16 @@ export default function RequestDetailClient({ id }) {
   const [descDraft, setDescDraft] = useState('')
   const [saving, setSaving] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(null)
+  const [lightboxType, setLightboxType] = useState('reference')
   const [uploading, setUploading] = useState(false)
-  const fileInputRef = useRef(null)
+  const [uploadError, setUploadError] = useState('')
+  const uploadErrorTimer = useRef(null)
   const [statusOpen, setStatusOpen] = useState(false)
-  const [savingProgress, setSavingProgress] = useState(false)
-  const [progressDraft, setProgressDraft] = useState(null)
   const [designers, setDesigners] = useState([])
   const [savingDesigner, setSavingDesigner] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
 
-  const STATUSES = ['In Progress', 'Review', 'Revision', 'Completed', 'On Hold']
+  const STATUSES = ['Pending', 'In Progress', 'Accepted', 'On Revision', 'Completed']
 
   useEffect(() => {
     fetch(`/api/requests/${id}`)
@@ -89,6 +258,18 @@ export default function RequestDetailClient({ id }) {
       .then((r) => r.json())
       .then(setDesigners)
       .catch(() => setDesigners([]))
+  }, [])
+
+  // Fetch current user role untuk kontrol upload designer files
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => setCurrentUser(data.user))
+      .catch(() => setCurrentUser(null))
+  }, [])
+
+  useEffect(() => {
+    return () => clearTimeout(uploadErrorTimer.current)
   }, [])
 
   const handleAssignDesigner = async (designerId) => {
@@ -156,7 +337,7 @@ export default function RequestDetailClient({ id }) {
       const res = await fetch(`/api/requests/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, currentProgress: request.progress }),
+        body: JSON.stringify({ status: newStatus }),
       })
       if (res.ok) {
         const updated = await res.json()
@@ -168,53 +349,38 @@ export default function RequestDetailClient({ id }) {
     }
   }
 
-  const saveProgress = async (value) => {
-    const parsed = Math.min(100, Math.max(0, parseInt(value) || 0))
-    setProgressDraft(null)
-    if (parsed === request.progress) return
-    setSavingProgress(true)
-    try {
-      const res = await fetch(`/api/requests/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ progress: parsed }),
-      })
-      if (res.ok) {
-        const updated = await res.json()
-        setRequest((prev) => ({ ...prev, ...updated }))
-        notify()
-      }
-    } catch (e) {
-      console.error('Progress error:', e)
-    } finally {
-      setSavingProgress(false)
-    }
+  const files              = request?.files || []
+  const referenceFiles     = files.filter((f) => f.type !== 'designer')
+  const designerFiles      = files.filter((f) => f.type === 'designer')
+  const referenceImages    = referenceFiles.filter((f) => (f.mimeType || '').startsWith('image/'))
+  const referenceDocuments = referenceFiles.filter((f) => !(f.mimeType || '').startsWith('image/'))
+  const designerImages     = designerFiles.filter((f) => (f.mimeType || '').startsWith('image/'))
+  const designerDocuments  = designerFiles.filter((f) => !(f.mimeType || '').startsWith('image/'))
+
+  // Designer & super admin bisa edit; admin view-only
+  const canEdit           = currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'designer')
+  const canUploadDesigner = canEdit
+  const canUploadReference = !!currentUser
+
+  const openLightbox = (type, index) => {
+    setLightboxType(type)
+    setLightboxIndex(index)
   }
-
-  const files      = request?.files || []
-  const imageFiles = files.filter((f) => f.mimeType !== 'application/pdf')
-  const pdfFiles   = files.filter((f) => f.mimeType === 'application/pdf')
-
-  const openLightbox = (index) => setLightboxIndex(index)
   const closeLightbox = () => setLightboxIndex(null)
-  const nextImage = () => setLightboxIndex((i) => (i + 1) % imageFiles.length)
-  const prevImage = () => setLightboxIndex((i) => (i - 1 + imageFiles.length) % imageFiles.length)
+  const activeImages = lightboxType === 'designer' ? designerImages : referenceImages
+  const nextImage = () => setLightboxIndex((i) => (i + 1) % activeImages.length)
+  const prevImage = () => setLightboxIndex((i) => (i - 1 + activeImages.length) % activeImages.length)
 
-  function formatSize(bytes) {
-    if (!bytes) return ''
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-
-  const handleFileSelect = async (e) => {
+  const handleFileSelect = async (e, type) => {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
+    setUploadError('')
     setUploading(true)
     try {
       const form = new FormData()
       form.append('file', file)
+      form.append('type', type)
       const res = await fetch(`/api/requests/${id}/files`, { method: 'POST', body: form })
       if (res.ok) {
         const newFile = await res.json()
@@ -222,29 +388,17 @@ export default function RequestDetailClient({ id }) {
         notify()
       } else {
         const json = await res.json().catch(() => ({}))
-        console.error('Upload failed:', json.error)
+        setUploadError(json.error || 'Upload failed')
+        clearTimeout(uploadErrorTimer.current)
+        uploadErrorTimer.current = setTimeout(() => setUploadError(''), 3000)
       }
     } catch (e) {
       console.error('Upload error:', e)
+      setUploadError('Upload failed')
+      clearTimeout(uploadErrorTimer.current)
+      uploadErrorTimer.current = setTimeout(() => setUploadError(''), 3000)
     } finally {
       setUploading(false)
-    }
-  }
-
-  const deleteFileById = async (fileId) => {
-    if (!confirm('Delete this file?')) return
-    try {
-      const res = await fetch(`/api/requests/${id}/files`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId }),
-      })
-      if (res.ok) {
-        setRequest((prev) => ({ ...prev, files: prev.files.filter((f) => f.id !== fileId) }))
-        if (lightboxIndex !== null) setLightboxIndex(null)
-      }
-    } catch (e) {
-      console.error('Delete error:', e)
     }
   }
 
@@ -265,7 +419,7 @@ export default function RequestDetailClient({ id }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [lightboxIndex, files.length])
+  }, [lightboxIndex, lightboxType, files.length])
 
   if (loading) {
     return <AppLayout title="Loading..."><DetailSkeleton /></AppLayout>
@@ -290,51 +444,24 @@ export default function RequestDetailClient({ id }) {
 
   const deadline = request.deadline ? formatDate(request.deadline) : '—'
 
-  // Timeline sederhana dari createdAt + updatedAt
+  // Timeline — riwayat perubahan status (terbaru di atas) + Project created
   const timeline = [
-    {
-      label: 'Last updated',
-      highlight: null,
-      time: formatDateTime(request.updatedAt),
+    ...(request.statusLogs || []).map((log) => ({
+      label: 'Project status changed to',
+      highlight: log.to,
+      time: formatDateTime(log.createdAt),
       active: true,
-    },
+    })),
     {
       label: 'Project created',
-      highlight: null,
       time: formatDateTime(request.createdAt),
-      active: false,
+      active: true,
     },
-  ]
+  ].sort((a, b) => new Date(b.time) - new Date(a.time))
 
   return (
     <AppLayout
-      title={request.title}
-      headerActions={
-        <div className="relative" data-status-dropdown>
-          <button
-            onClick={() => setStatusOpen((o) => !o)}
-            className={`px-sm py-1 rounded-full text-[12px] font-bold flex items-center gap-xs hover:opacity-80 transition-opacity ${getStatusStyle(request.status)}`}
-          >
-            {request.status.toUpperCase()}
-            <span className="material-symbols-outlined text-[14px]">expand_more</span>
-          </button>
-          {statusOpen && (
-            <div className="absolute right-0 top-full mt-xs glass-panel-high rounded-xl overflow-hidden z-50 min-w-[160px] shadow-xl">
-              {STATUSES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => changeStatus(s)}
-                  className={`w-full text-left px-md py-sm text-label-md hover:bg-white/10 transition-colors flex items-center gap-xs ${s === request.status ? 'text-primary' : 'text-on-surface'}`}
-                >
-                  {s === request.status && <span className="material-symbols-outlined text-[14px]">check</span>}
-                  {s !== request.status && <span className="w-[14px]" />}
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      }
+      title="Project Details"
     >
       <div className="px-md sm:px-lg pt-md">
         <button onClick={() => router.push('/dashboard')}
@@ -347,23 +474,16 @@ export default function RequestDetailClient({ id }) {
       <div className="p-md sm:p-lg grid grid-cols-12 gap-gutter">
         {/* Left */}
         <div className="col-span-12 lg:col-span-8 space-y-gutter">
-          {/* Tags */}
-          <section className="glass-panel rounded-xl p-md">
-            <h3 className="text-label-md text-on-surface-variant uppercase tracking-widest mb-md">Project Tags</h3>
-            <div className="flex flex-wrap gap-xs">
-              {request.tags.length === 0 ? (
-                <span className="text-[12px] text-on-surface-variant/50">No tags</span>
-              ) : request.tags.map((tag) => (
-                <span key={tag} className="px-sm py-1 bg-white/5 border border-white/10 rounded-lg text-[12px] text-on-surface-variant hover:border-primary/40 cursor-default transition-colors">{tag}</span>
-              ))}
-            </div>
-          </section>
+          {/* Title */}
+          <div className="px-xs">
+            <h1 className="text-headline-lg text-on-surface font-black leading-tight">{request.title}</h1>
+          </div>
 
           {/* Description */}
           <section className="glass-panel rounded-xl p-md">
             <div className="flex justify-between items-start mb-md">
               <h3 className="text-headline-md text-on-surface">Description</h3>
-              {!editing && (
+              {canEdit && !editing && (
                 <button onClick={startEdit} className="text-on-surface-variant hover:text-primary flex items-center gap-xs transition-colors">
                   <span className="material-symbols-outlined text-[18px]">edit</span>
                   <span className="text-label-md">Edit</span>
@@ -406,130 +526,36 @@ export default function RequestDetailClient({ id }) {
                 {request.description || 'No description provided.'}
               </p>
             )}
-            <div className="mt-lg pt-md border-t border-white/10 space-y-md">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <h4 className="text-label-md text-on-surface">Reference Files ({files.length})</h4>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="flex items-center gap-xs text-label-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
-                >
-                  {uploading
-                    ? <><span className="material-symbols-outlined animate-spin text-[16px]">sync</span> Uploading...</>
-                    : <><span className="material-symbols-outlined text-[16px]">upload</span> Upload</>
-                  }
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,.pdf,.svg"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-              </div>
-
-              {/* Empty state */}
-              {files.length === 0 && (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm py-lg text-center cursor-pointer hover:border-primary/40 transition-colors group"
-                >
-                  <span className="material-symbols-outlined text-on-surface-variant/40 mb-xs group-hover:text-primary/50 transition-colors">upload_file</span>
-                  <span className="text-[12px] text-on-surface-variant/60 group-hover:text-on-surface-variant transition-colors">Click to upload a reference file</span>
-                </div>
-              )}
-
-              {/* Images grid */}
-              {imageFiles.length > 0 && (
-                <div>
-                  <p className="text-[11px] text-on-surface-variant/50 uppercase tracking-widest mb-xs">Images</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-sm">
-                    {imageFiles.map((file, i) => (
-                      <div
-                        key={file.id}
-                        className="group relative aspect-video rounded-lg overflow-hidden glass-panel border border-white/10 cursor-pointer"
-                      >
-                        <img
-                          src={file.url}
-                          alt={file.name}
-                          onClick={() => openLightbox(i)}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-sm transition-opacity">
-                          <button
-                            onClick={() => openLightbox(i)}
-                            className="p-xs rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">visibility</span>
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); deleteFileById(file.id) }}
-                            className="p-xs rounded-full bg-error/70 hover:bg-error text-white transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">delete</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg p-sm hover:border-primary/50 transition-colors cursor-pointer group aspect-video"
-                    >
-                      <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary mb-xs">add_photo_alternate</span>
-                      <span className="text-[10px] font-bold text-on-surface-variant group-hover:text-primary uppercase tracking-tighter">Add Image</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Documents list */}
-              {pdfFiles.length > 0 && (
-                <div>
-                  <p className="text-[11px] text-on-surface-variant/50 uppercase tracking-widest mb-xs">Documents</p>
-                  <div className="space-y-xs">
-                    {pdfFiles.map((file) => (
-                      <div
-                        key={file.id}
-                        className="flex items-center gap-sm px-sm py-xs rounded-lg glass-card hover:border-white/20 hover:bg-white/5 transition-all group"
-                      >
-                        <a
-                          href={file.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-sm flex-1 min-w-0"
-                        >
-                          <span className="material-symbols-outlined text-error text-[24px] flex-shrink-0">picture_as_pdf</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-label-md text-on-surface truncate">{file.name}</p>
-                            {file.size && <p className="text-[11px] text-on-surface-variant/60">{formatSize(file.size)}</p>}
-                          </div>
-                          <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-[18px] flex-shrink-0">open_in_new</span>
-                        </a>
-                        <button
-                          onClick={() => deleteFileById(file.id)}
-                          className="p-xs rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Add file button when files exist but no images yet */}
-              {files.length > 0 && imageFiles.length === 0 && (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-xs text-label-sm text-on-surface-variant hover:text-primary transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
-                  Add image reference
-                </button>
-              )}
-            </div>
           </section>
+
+          {/* Reference Files */}
+          <FileCard
+            title="Reference Files"
+            type="reference"
+            files={referenceFiles}
+            images={referenceImages}
+            documents={referenceDocuments}
+            uploading={uploading}
+            uploadError={uploadError}
+            onUpload={handleFileSelect}
+            onOpenLightbox={openLightbox}
+            canUpload={canUploadReference}
+            alwaysShowImages
+          />
+
+          {/* Designer Files */}
+          <FileCard
+            title="Designer Files"
+            type="designer"
+            files={designerFiles}
+            images={designerImages}
+            documents={designerDocuments}
+            uploading={uploading}
+            uploadError={uploadError}
+            onUpload={handleFileSelect}
+            onOpenLightbox={openLightbox}
+            canUpload={canUploadDesigner}
+          />
 
           {/* Timeline */}
           <section className="glass-panel rounded-xl p-md">
@@ -537,7 +563,7 @@ export default function RequestDetailClient({ id }) {
             <div className="space-y-sm">
               {timeline.map((item, i) => (
                 <div key={i} className={`relative pl-8 ${i < timeline.length - 1 ? 'before:absolute before:left-[7px] before:top-6 before:bottom-0 before:w-0.5 before:bg-white/10' : ''}`}>
-                  <div className={`absolute left-0 top-1 w-4 h-4 rounded-full ${item.active ? 'bg-primary ring-4 ring-primary/10' : 'bg-on-surface-variant/40'}`} />
+                  <div className="absolute left-0 top-1 w-4 h-4 rounded-full bg-primary ring-4 ring-primary/10" />
                   <p className="text-label-md text-on-surface">
                     {item.label}{' '}
                     {item.highlight && <span className="font-bold text-primary">{item.highlight}</span>}
@@ -554,10 +580,65 @@ export default function RequestDetailClient({ id }) {
           <div className="glass-panel-high rounded-xl p-md space-y-md lg:sticky lg:top-24">
             <h3 className="text-label-md text-on-surface-variant uppercase tracking-widest mb-sm">Project Info</h3>
             <div className="space-y-sm">
+              {/* Project Tags */}
+              <div className="flex justify-between items-center py-sm border-b border-white/5">
+                <span className="text-on-surface-variant opacity-60 text-label-md">Project Tags</span>
+                <span className={`px-sm py-1 rounded-lg text-[12px] inline-flex items-center gap-xs border ${
+                  request.tagType === 'Custom'
+                    ? 'border-secondary/40 text-secondary bg-secondary/10'
+                    : 'border-primary/40 text-primary bg-primary/10'
+                }`}>
+                  <span className="material-symbols-outlined text-[14px]">{request.tagType === 'Custom' ? 'brush' : 'category'}</span>
+                  {request.tagType === 'Regular' || request.tagType === 'Reguler' ? 'Regular' : request.tagType || 'Regular'}
+                </span>
+              </div>
+              {/* Status */}
+              <div className="flex justify-between items-center py-sm border-b border-white/5">
+                <span className="text-on-surface-variant opacity-60 text-label-md">Status</span>
+                {canEdit ? (
+                  <div className="relative" data-status-dropdown>
+                    <button
+                      onClick={() => setStatusOpen((o) => !o)}
+                      className={`px-sm py-1 rounded-full text-[12px] font-bold flex items-center gap-xs hover:opacity-80 transition-opacity ${getStatusStyle(request.status)}`}
+                    >
+                      {request.status}
+                      <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                    </button>
+                    {statusOpen && (
+                      <div className="absolute right-0 top-full mt-xs glass-panel-high rounded-xl overflow-hidden z-50 min-w-[160px] shadow-xl">
+                        {STATUSES.map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => changeStatus(s)}
+                            className={`w-full text-left px-md py-sm text-label-md hover:bg-white/10 transition-colors flex items-center gap-xs ${s === request.status ? 'text-primary' : 'text-on-surface'}`}
+                          >
+                            {s === request.status && <span className="material-symbols-outlined text-[14px]">check</span>}
+                            {s !== request.status && <span className="w-[14px]" />}
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span className={`px-sm py-1 rounded-full text-[12px] font-bold ${getStatusStyle(request.status)}`}>
+                    {request.status}
+                  </span>
+                )}
+              </div>
+              {/* Priority */}
+              <div className="flex justify-between items-center py-sm border-b border-white/5">
+                <span className="text-on-surface-variant opacity-60 text-label-md">Priority</span>
+                <span className={`px-sm py-1 rounded-full text-[12px] font-bold ${getPriorityStyle(request.priority)}`}>
+                  {request.priority}
+                </span>
+              </div>
               {[
                 { label: 'Client',       value: request.client,             cls: '' },
                 { label: 'Deadline',     value: deadline,                   cls: 'text-error', icon: 'calendar_today' },
-                { label: 'Project Type', value: request.projectType || '—', cls: '' },
+                { label: 'Category',     value: request.category,           cls: '' },
+                ...(request.subCategory1 ? [{ label: 'Sub-Category', value: request.subCategory1, cls: '' }] : []),
+                ...(request.subCategory2 ? [{ label: 'Detail', value: request.subCategory2, cls: '' }] : []),
               ].map(({ label, value, cls, icon }) => (
                 <div key={label} className="flex justify-between items-center py-sm border-b border-white/5">
                   <span className="text-on-surface-variant opacity-60 text-label-md">{label}</span>
@@ -567,48 +648,27 @@ export default function RequestDetailClient({ id }) {
                   </span>
                 </div>
               ))}
-              <div className="flex justify-between items-center gap-xs py-sm border-b border-white/5">
-                <span className="text-on-surface-variant opacity-60 text-label-md flex-shrink-0">Assigned Designer</span>
-                <div className="flex items-center gap-xs">
-                  {savingDesigner && <span className="material-symbols-outlined animate-spin text-[14px] text-on-surface-variant">sync</span>}
-                  <select
-                    value={request.assignedDesignerId || ''}
-                    onChange={(e) => handleAssignDesigner(e.target.value)}
-                    className="bg-transparent border border-white/10 rounded-lg px-xs py-0.5 text-label-sm text-on-surface focus:outline-none focus:border-primary appearance-none"
-                  >
-                    <option value="">Unassigned</option>
-                    {designers.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress */}
-            <div className="pt-md">
-              <div className="flex items-center justify-between mb-xs">
-                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Progress</p>
-                <div className="flex items-center gap-xs">
-                  {savingProgress && <span className="material-symbols-outlined animate-spin text-[14px] text-on-surface-variant">sync</span>}
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={progressDraft ?? request.progress ?? 0}
-                    onChange={(e) => setProgressDraft(e.target.value)}
-                    onBlur={(e) => saveProgress(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
-                    className="w-14 bg-transparent border-b border-white/20 text-right text-label-md text-on-surface focus:outline-none focus:border-primary transition-colors"
-                  />
-                  <span className="text-[12px] text-on-surface-variant">%</span>
-                </div>
-              </div>
-              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full primary-gradient rounded-full transition-all duration-300"
-                  style={{ width: `${progressDraft ?? request.progress ?? 0}%` }}
-                />
+              <div className="flex flex-col gap-xs py-sm border-b border-white/5">
+                <span className="text-on-surface-variant opacity-60 text-label-md">Assigned Designer</span>
+                {canEdit ? (
+                  <div className="flex items-center gap-xs">
+                    {savingDesigner && <span className="material-symbols-outlined animate-spin text-[14px] text-on-surface-variant">sync</span>}
+                    <select
+                      value={request.assignedDesignerId || ''}
+                      onChange={(e) => handleAssignDesigner(e.target.value)}
+                      className="flex-1 bg-surface-container-highest border border-white/10 rounded-lg px-sm py-xs text-label-md text-on-surface focus:outline-none focus:border-primary appearance-none cursor-pointer hover:border-white/20 transition-colors"
+                    >
+                      <option value="">Unassigned</option>
+                      {designers.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <span className="text-label-md text-on-surface">
+                    {request.assignedDesigner?.name || <span className="text-on-surface-variant/50">Unassigned</span>}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -616,8 +676,8 @@ export default function RequestDetailClient({ id }) {
       </div>
 
       {/* Lightbox — images only */}
-      {lightboxIndex !== null && imageFiles[lightboxIndex] && (() => {
-        const current = imageFiles[lightboxIndex]
+      {lightboxIndex !== null && activeImages[lightboxIndex] && (() => {
+        const current = activeImages[lightboxIndex]
         return (
           <div
             className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md"
@@ -630,14 +690,8 @@ export default function RequestDetailClient({ id }) {
               onClick={(e) => e.stopPropagation()}
             />
 
-            {/* Close + Delete */}
+            {/* Close */}
             <div className="absolute top-lg right-lg flex gap-sm z-10">
-              <button
-                onClick={() => deleteFileById(current.id)}
-                className="p-sm rounded-full bg-error/70 hover:bg-error text-white transition-colors"
-              >
-                <span className="material-symbols-outlined">delete</span>
-              </button>
               <button
                 onClick={closeLightbox}
                 className="p-sm rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
@@ -647,7 +701,7 @@ export default function RequestDetailClient({ id }) {
             </div>
 
             {/* Prev / Next */}
-            {imageFiles.length > 1 && (
+            {activeImages.length > 1 && (
               <>
                 <button
                   onClick={(e) => { e.stopPropagation(); prevImage() }}
@@ -667,12 +721,12 @@ export default function RequestDetailClient({ id }) {
             {/* Caption + counter + thumbnails */}
             <div className="absolute bottom-lg inset-x-0 flex flex-col items-center gap-sm pointer-events-none">
               <p className="text-white text-label-md font-medium drop-shadow">{current.name}</p>
-              {imageFiles.length > 1 && (
-                <p className="text-white/60 text-label-sm">{lightboxIndex + 1} / {imageFiles.length}</p>
+              {activeImages.length > 1 && (
+                <p className="text-white/60 text-label-sm">{lightboxIndex + 1} / {activeImages.length}</p>
               )}
-              {imageFiles.length > 1 && (
+              {activeImages.length > 1 && (
                 <div className="mt-xs flex gap-sm flex-wrap justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                  {imageFiles.map((f, i) => (
+                  {activeImages.map((f, i) => (
                     <button
                       key={f.id}
                       onClick={() => setLightboxIndex(i)}

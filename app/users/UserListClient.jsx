@@ -4,15 +4,15 @@ import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '../../components/layout/AppLayout'
 
 const ROLE_LABEL = {
-  designer:       'Designer',
-  admin:          'Admin',
-  studio_director: 'Studio Director',
+  designer:    'Designer',
+  admin:       'Admin',
+  super_admin: 'Super Admin',
 }
 
 const ROLE_STYLE = {
-  designer:       'bg-primary/20 text-primary border border-primary/30',
-  admin:          'bg-tertiary/20 text-tertiary border border-tertiary/30',
-  studio_director: 'bg-secondary/20 text-secondary border border-secondary/30',
+  designer:    'bg-primary/20 text-primary border border-primary/30',
+  admin:       'bg-tertiary/20 text-tertiary border border-tertiary/30',
+  super_admin: 'bg-secondary/20 text-secondary border border-secondary/30',
 }
 
 function RoleBadge({ role }) {

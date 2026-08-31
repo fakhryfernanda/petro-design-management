@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
 const ROLES = {
+  super_admin: 'Super Admin',
   admin: 'Admin',
-  studio_director: 'Studio Director',
   designer: 'Designer',
 }
 
@@ -23,15 +23,15 @@ export default function Sidebar() {
       .catch(() => setUser(null))
   }, [])
 
-  const isAdmin = user && (user.role === 'admin' || user.role === 'studio_director')
+  // Design Requests (create) hanya admin/super_admin; Users hanya super_admin
+  const canCreate = user && (user.role === 'admin' || user.role === 'super_admin')
+  const isSuperAdmin = user && user.role === 'super_admin'
 
   const NAV_ITEMS = [
     { icon: 'dashboard',       label: 'Dashboard',       to: '/dashboard' },
-    { icon: 'palette',         label: 'Design Requests', to: '/requests/new' },
+    ...(canCreate ? [{ icon: 'palette', label: 'Design Requests', to: '/requests/new' }] : []),
     { icon: 'inventory_2',     label: 'Archive',         to: '/archive' },
-    { icon: 'bar_chart',       label: 'Analytics',       to: '/analytics' },
-    ...(isAdmin ? [{ icon: 'manage_accounts', label: 'Users', to: '/users' }] : []),
-    { icon: 'settings',        label: 'Settings',         to: null },
+    ...(isSuperAdmin ? [{ icon: 'manage_accounts', label: 'Users', to: '/users' }] : []),
   ]
 
   const isActive = (to) => {
@@ -91,18 +91,9 @@ export default function Sidebar() {
         )}
       </nav>
 
-      {/* New Request + user */}
+      {/* user */}
       <div className="md:px-2 lg:px-md mt-auto pt-lg">
-        <button
-          onClick={() => router.push('/requests/new')}
-          title="New Request"
-          className={`w-full primary-gradient text-white font-label-md text-label-md py-sm rounded-xl shadow-lg active:opacity-80 transition-all flex items-center justify-center gap-xs`}
-        >
-          <span className="material-symbols-outlined text-[20px]">add</span>
-          <span className="hidden lg:block">New Request</span>
-        </button>
-
-        <div className="mt-lg relative">
+        <div className="relative">
           <button
             onClick={() => setMenuOpen((o) => !o)}
             title={user?.name || 'Account'}
